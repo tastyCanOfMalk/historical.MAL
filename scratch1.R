@@ -6,18 +6,18 @@ setwd("~/R/historical.MAL")
 
 if(!require(tidyverse)) install.packages("tidyverse")
 library(tidyverse)
-if(!require(tibble)) install.packages("tibble")
-library(tibble)
-if(!require(lubridate)) install.packages("lubridate")
-library(lubridate)
-if(!require(Amelia)) install.packages("Amelia")
-library(Amelia) # missmap
-if(!require(visdat)) install.packages("visdat")
-library(visdat) # vis_miss
+# if(!require(tibble)) install.packages("tibble")
+# library(tibble)
+# if(!require(lubridate)) install.packages("lubridate")
+# library(lubridate)
+# if(!require(Amelia)) install.packages("Amelia")
+# library(Amelia) # missmap
+# if(!require(visdat)) install.packages("visdat")
+# library(visdat) # vis_miss
 if(!require(naniar)) install.packages("naniar")
 library(naniar) # gg_miss
-if(!require(stringdist)) install.packages("stringdist")
-library(stringdist) 
+# if(!require(stringdist)) install.packages("stringdist")
+# library(stringdist) 
 
 x <- read_csv("data/History.csv")
 glimpse(x)
