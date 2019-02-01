@@ -1,0 +1,25 @@
+---
+title: "Cleaning Historical MAL data"
+author: "Ed Yu"
+date: "December 4, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=F,warning=F)
+```
+
+## Introduction
+#### via Marek:
+###### If you are interested I have a small project for R, which is very useful. It has to do with history records of MAL. Here is some basic info:
+* Goal: Clean up and consolidate dataset to enable easy searching of past melt
+records
+* Tasks: 
+    + Mostly working with strings removing duplicates ( E. Yu, YU, Yu Edward …)
+    + Removing empty records
+    + Missing data
+    + Multiple variables in one column
+  
+###### There might be other things to do but I have not spent much time looking at the dataset. We could also pull some basic stats on usage, costs, repeats etc. I don’t know your skill level, but it is relatively simple project and I am estimating it would take me about 8 hrs of work. Actual coding, if you know what to use, could be done in less than 1 hour but that requires proficiency in typing and in R.
+
+###### I just noticed that sand for this year should have all been W410, excel incremented the name by 1 each time. I think I might be adding information about individual tests from this year incrementally as it comes in and since it is only several rows, perhaps you can delete the entire set of rows from this year, if that makes things easier on your end.
