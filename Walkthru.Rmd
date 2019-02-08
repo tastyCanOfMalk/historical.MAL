@@ -18,8 +18,9 @@ knitr::opts_chunk$set(echo    = TRUE,
                       warning = FALSE)
 ```
 
-# *From Marek*: 
-## If you are interested I have a small project for R, which is very useful. It has to do with history records of MAL. Here is some basic info:
+# Introduction
+## *From Marek*: 
+### If you are interested I have a small project for R, which is very useful. It has to do with history records of MAL. Here is some basic info:
   
   * Goal: Clean up and consolidate dataset to enable easy searching of past melt
 records
@@ -33,7 +34,7 @@ There might be other things to do but I have not spent much time looking at the 
 
 I just noticed that sand for this year should have all been W410, excel incremented the name by 1 each time. I think I might be adding information about individual tests from this year incrementally as it comes in and since it is only several rows, perhaps you can delete the entire set of rows from this year, if that makes things easier on your end.
 
-# Preliminary data peaking
+# Load & peak data
 ## Load packages 
 ```{r}
 if(!require(tidyverse)) install.packages("tidyverse")
@@ -49,14 +50,116 @@ x <- read_csv("data/History.csv")
 glimpse(x)
 ```
 
+## Check levels
+```{r}
+# create function for later use
+get_levels <- function(df, col){
+  x.levels <- cbind(colnames(df),
+                    (as.data.frame(sapply(df,function(x) length(unique(x)))))
+  )
+  colnames(x.levels) <- c("var","levels")
+  row.names(x.levels) <- NULL
+  levels <- x.levels[order(-x.levels[,2]),]
+  return(levels[col,])
+}
+get_levels(x)
+```
+
 ## Peak missing values
 ```{r}
 gg_miss_var(x, show_pct = T)
 gg_miss_which(x)
 ```
 
-It appears most variables are missing data. We'll tackle them from top to bottom:
-    1. Special projects
-    2. Notes ML
-    3. Furnace cycle
-    4
+## Outline of actions to take
+Rename variables to be all lowercase with no spaces. Seems the most important variables are casting type and allow type, as these are the only with zero missing values.
+
+ * **Request**: should have 3,629 levels
+ * **ID**: not utilized in recent pours, delete
+ 
+ * **Date received**: convert to date format, fill missing values, for some reason there are less dates received than dates completed
+ * **Date poured**: convert to date format, fill missing values
+ * **Date completed**: convert to date format, fill missing values, perhaps create new column calculating days to complete from date received/completed
+ 
+ * **Notes ML**: n/a
+ * **Special projects**: most values are missing, unsure of importance of this field, should likely merge with comments or remove entirely  
+ 
+ * **Requested by**: fill missing values, will require some renaming/matching
+ * **Customer name**: fill missing values, will require some renaming/matching
+ * **Product tested**: fill missing values, will require some renaming/matching
+ 
+ * **Alloy**: n/a
+ * **Casting type**: n/a
+ * **Number of castings**: some n/a values, fill in with rounded averages 
+ * **lbs**: lbs of metal used, could be calculated based on values,  fill missing values
+ 
+ * **Sand type**: fill missing values, will require some renaming/matching
+ * **Amount used**: sand? unsure what amount this is talking about
+ 
+ * **Furnace cycle**: need to come up with new way to ID new lining and cycles
+
+ * **Total hours**: many n/a values, should be calculated automatically based on number of castings, casting type, etc
+ * **Total cost**: fill missing values, perhaps determine how it is calculated to automate the calculation
+ 
+We have many missing datapoints, fields that aren't inuitive, some useless fields, fields that need added, etc. We'll start with the most simple and move on.  
+
+# Cleaning
+## Rename columns
+Convert column names to lower case, replace spaces with periods.  
+```{r}
+names <- tolower(colnames(x))    # convert to lowercase
+names <- gsub("  ", " ", names)  # remove double spaces
+names <- gsub(" ", "\\.", names) # replace space with .
+colnames(x) <- names
+colnames(x)
+```
+
+## $request
+There is a duplicate entry somewhere.
+```{r}
+which(duplicated(x$request)==TRUE)
+as.data.frame(t(x[3609:3611,]))
+```
+
+The first entry appears to have been made in error until we see the furnace cycle was incremented. Probably shouldn't remove, will simply re-assign all request variables to equal row numbers.  
+```{r}
+x <- x %>% 
+  mutate(request = seq(1:nrow(x)))
+get_levels(x, 1)
+```
+ 
+## $id
+Delete useless column.
+```{r}
+x <- x %>% 
+  select(-id)
+```
+
+## Convert dates, add lead time
+Convert char to date values.  
+```{r}
+x <- x %>% 
+  mutate(date.poured = as.Date(x$date.poured, "%m/%d/%Y")) %>% 
+  mutate(date.received = as.Date(x$date.received, "%m/%d/%Y")) %>% 
+  mutate(date.completed = as.Date(x$date.completed, "%m/%d/%Y"))
+```
+
+
+
+
+## $special.projects
+Seems to be a redundant column when the $notes column would suffice. Check if values are stored in the column and concatenate them with the notes column.  
+```{r}
+# list non-NA values in special projects
+x$special.projects[!is.na(x$special.projects)]
+# find rownums of non-NA vlaues
+spec.rows <- which(!is.na(x$special.projects)==T)
+# check notes.ml of same rownums
+x$notes.ml[spec.rows]
+# concatenate the columns
+x[spec.rows,] <- x[spec.rows,] %>%
+  mutate(notes.ml = paste(notes.ml, special.projects, sep="--"))
+# confirm
+x$notes.ml[spec.rows]
+```
+
