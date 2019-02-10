@@ -11,7 +11,8 @@ library(naniar) # gg_miss
 
 
 # IMPORT DATA
-setwd("~/R/historical.MAL")
+# setwd("~/R/historical.MAL")
+setwd("I:/Code-CAD/R/historical.MAL")
 x <- read_csv("data/History.csv")
 glimpse(x)
 
@@ -69,53 +70,141 @@ x <- x %>%
   mutate(date.completed = as.Date(x$date.completed, "%m/%d/%Y"))
 
 # FIND DATE TYPOS
-summary(x[c(2:4)])
+summary(x[c(3,2,4)])
+# filter for anything too far in the future
 wrong.dates <- x %>% 
-  filter(date.received  > "2019-01-01" |
-         date.poured    > "2019-01-01" | 
-         date.completed > "2019-01-01")
-as.data.frame(wrong.dates)[,1:4]
+  filter(date.received  > "2020-01-01" |
+         date.poured    > "2020-01-01" | 
+         date.completed > "2020-01-01")
+as.data.frame(wrong.dates)[,c(1,3,2,4)]
 # manually fix
 x$date.poured[1103]    <- as.Date("2002-04-30")
 x$date.completed[1198] <- as.Date("2002-08-22")
+x$date.received[1889]  <- as.Date("2005-11-17")
 x$date.poured[2735]    <- as.Date("2002-06-10")
+x$date.received[2740]  <- as.Date("2010-06-15")
 x$date.received[3106]  <- as.Date("2012-03-20")
 x$date.received[3149]  <- as.Date("2012-06-19")
+x$date.received[3341]  <- as.Date("2013-11-01")
 x$date.completed[3582] <- as.Date("2016-04-05")
 # x[3605:3608,]
 x$date.poured[3606] <- as.Date("2017-08-24")
 # dates now seem to be in a normal range
-summary(x[c(2:4)])
+summary(x[c(3,2,4)])
 
 # CALCULATE LEAD TIME
-preprocessing.time <- as.numeric(x$date.poured-x$date.received)
-postprocessing.time <- as.numeric(x$date.completed-x$date.poured)
-lead.time <- preprocessing.time + postprocessing.time
-x.temp <- as_tibble(cbind(x,
-                          preprocessing.time,
-                          postprocessing.time,
-                          lead.time))
+## create function so that results of editing can be seen quickly
+calc_lead <- function(){
+  preprocessing.time  <- as.numeric(x$date.poured-x$date.received)
+  postprocessing.time <- as.numeric(x$date.completed-x$date.poured)
+  lead.time           <- preprocessing.time + postprocessing.time
+  x.temp <- as_tibble(cbind(x,
+                            preprocessing.time,
+                            postprocessing.time,
+                            lead.time))
+  return(x.temp)
+}
+# calc_lead()
 # check extreme values
-summary(x.temp[c(19:21)])
+# summary(x.temp[c(19:21)])
+summary(calc_lead()[c(19:21)])
 
-# negative processing times occur when items are input in the incorrect order
+## fix large values
+wrong.dates <- calc_lead() %>% 
+  filter(preprocessing.time > 400 |
+           postprocessing.time > 400)
+wrong.dates[c(1,3,2,4)]
+
+# manually fix
+x$date.received[310]  <- as.Date("1999-10-20")
+x$date.poured[930]    <- as.Date("2001-08-30")
+x$date.poured[1091]   <- as.Date("2002-04-22")
+x$date.received[1616] <- as.Date("2004-04-13")
+x$date.poured[1668]   <- as.Date("2004-08-04")
+x$date.poured[1877]   <- as.Date("2005-11-01")
+x$date.received[2229] <- as.Date("2007-01-07")
+x$date.poured[2735]   <- as.Date("2010-06-10")
+x$date.poured[3133]   <- as.Date("2012-05-17")
+
+# max values better
+summary(calc_lead()[c(19:21)])
+
+
+# fix negatives
 # must follow: received < poured < completed
+wrong.dates2 <- calc_lead() %>% 
+  filter(preprocessing.time < 0 | postprocessing.time < 0)
+wrong.dates2[c(1,3,2,4)]
+# definitely not doing this manually
+# remove all rows listed, 
+# calculate average lead times on remaining dataset,
+# insert dates into removed dataset, merge 
 
-wrong.dates <- x.temp %>% 
-  filter(preprocessing.time < 0 |
-           postprocessing.time < 0)
-wrong.dates <- x.temp %>% 
-  filter(preprocessing.time > 200 |
-           postprocessing.time > 200)
 
-wrong.dates[c(1,3,2,4,19,20,21)]
+x.anti <- anti_join(calc_lead(), wrong.dates2, c("request"))
+# dim(calc_lead())[[1]] - dim(x.anti)[[1]] == dim(wrong.dates2)[[1]]
+# anti look good
+summary(x.anti[c(19:21)])
+# wrongs look bad
+summary(wrong.dates2[c(19:21)])
+
+
+# > summary(x.anti[c(19:21)])
+# preprocessing.time postprocessing.time   lead.time     
+# Min.   :  0.000    Min.   :  0.000     Min.   :  0.00  
+# 1st Qu.:  3.000    1st Qu.:  1.000     1st Qu.:  6.00  
+# Median :  6.000    Median :  3.000     Median :  9.00  
+# Mean   :  8.141    Mean   :  5.218     Mean   : 13.11  
+# 3rd Qu.:  8.000    3rd Qu.:  6.000     3rd Qu.: 14.00  
+# Max.   :372.000    Max.   :308.000     Max.   :434.00  
+# NA's   :43         NA's   :225         NA's   :228     
+
+wrong.dates2$date.received > wrong.dates2$date.poured
+wrong.dates2$date.poured > wrong.dates2$date.completed
+wrong.dates2$date.received > wrong.dates2$date.completed
+
+wrong.dates2$date.completed 
+wrong.dates2[,c(1,3,2,4)]
+
+wrong.dates2[7,]
+wrong.dates2$date.received[[2]]
+wrong.dates2$date.poured[[2]]
+wrong.dates2$date.poured[[2]] - 6
+
+wrong.dates2$date.received[[6]] > wrong.dates2$date.completed[[6]]
+wrong.dates2[6,]
+
+
+# NA values screw up the loop below
+wrong.dates2 %>% 
+  filter(is.na(date.received) == T | 
+           is.na(date.poured) == T | 
+           is.na(date.completed) == T)
+
+
+for (i in 1:nrow(wrong.dates2)){
+ if (wrong.dates2$date.received[[i]] > wrong.dates2$date.poured[[i]]){
+   wrong.dates2$date.received[[i]] <- wrong.dates2$date.poured[[i]] - 6
+ }
+ if (wrong.dates2$date.poured[[i]] > wrong.dates2$date.completed[[i]]){
+   wrong.dates2$date.completed[[i]] <- wrong.dates2$date.poured[[i]] + 3
+ }
+ # if (wrong.dates2$date.received[[i]] > wrong.dates2$date.completed[[i]]){
+ #   wrong.dates2$date.received[[i]] <- wrong.dates2$date.completed[[i]] - 9
+ # }
+}
+
+
+
 # as.data.frame(wrong.dates)[c(1,3,2,4)]
 
 # check median values of anti-joined dataframe
-x.anti <- anti_join(x.temp,wrong.dates,c("request"))
-summary(x.anti[c(19:21)])
 
 
+
+
+
+#######################
 
 x.temp %>% 
   filter(postprocessing.time < 0)
