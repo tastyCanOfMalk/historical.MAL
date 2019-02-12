@@ -298,8 +298,22 @@ x[spec.rows,] <- x[spec.rows,] %>%
 # confirm
 x$notes.ml[spec.rows]
 
+# remove column
+# x <- x %>% 
+#   select(-special.projects)
+
+########
+
+# alloy.lbs NA values
+summary(is.na(x))
+x %>%
+  filter(is.na(x$alloy.lbs)==TRUE)
 
 
 
 
       
+get_levels(x)
+gg_miss_var(x, show_pct = T)
+gg_miss_which(x)
+glimpse(x)
