@@ -8,11 +8,12 @@ library(tidyverse)
 if(!require(naniar)) install.packages("naniar")
 library(naniar) # gg_miss
 
-
+# clear environment
+rm(list=ls())
 
 # IMPORT DATA
-# setwd("~/R/historical.MAL")
-setwd("I:/Code-CAD/R/historical.MAL")
+setwd("~/R/historical.MAL")
+# setwd("I:/Code-CAD/R/historical.MAL")
 x <- read_csv("data/History.csv")
 glimpse(x)
 
@@ -46,6 +47,7 @@ gg_miss_which(x)
 names <- tolower(colnames(x))
 names <- gsub("  ", " ", names) 
 names <- gsub(" ", "\\.", names) 
+names[c(12,14)] <- c("alloy.lbs", "sand.lbs")
 colnames(x) <- names
 glimpse(x)
 
@@ -126,110 +128,156 @@ x$date.received[2229] <- as.Date("2007-01-07")
 x$date.poured[2735]   <- as.Date("2010-06-10")
 x$date.poured[3133]   <- as.Date("2012-05-17")
 
-# max values better
+# max values look better now
 summary(calc_lead()[c(19:21)])
-
 
 # fix negatives
 # must follow: received < poured < completed
 wrong.dates2 <- calc_lead() %>% 
   filter(preprocessing.time < 0 | postprocessing.time < 0)
 wrong.dates2[c(1,3,2,4)]
-# definitely not doing this manually
+# 234+ rows, definitely not doing this manually
 # remove all rows listed, 
 # calculate average lead times on remaining dataset,
 # insert dates into removed dataset, merge 
 
-
 x.anti <- anti_join(calc_lead(), wrong.dates2, c("request"))
 # dim(calc_lead())[[1]] - dim(x.anti)[[1]] == dim(wrong.dates2)[[1]]
-# anti look good
+# anti looks good
 summary(x.anti[c(19:21)])
 # wrongs look bad
 summary(wrong.dates2[c(19:21)])
-
+# see some NA values from the calculations
+# backtrace to check dates
+summary(wrong.dates2[c(3,2,4)])
+# have NA values in date.completed
+# if NA change completed date to received + 9
 
 # > summary(x.anti[c(19:21)])
 # preprocessing.time postprocessing.time   lead.time     
-# Min.   :  0.000    Min.   :  0.000     Min.   :  0.00  
-# 1st Qu.:  3.000    1st Qu.:  1.000     1st Qu.:  6.00  
 # Median :  6.000    Median :  3.000     Median :  9.00  
-# Mean   :  8.141    Mean   :  5.218     Mean   : 13.11  
-# 3rd Qu.:  8.000    3rd Qu.:  6.000     3rd Qu.: 14.00  
-# Max.   :372.000    Max.   :308.000     Max.   :434.00  
-# NA's   :43         NA's   :225         NA's   :228     
 
+for (i in 1:dim(wrong.dates2)[1]){
+  if (is.na(wrong.dates2$date.completed[[i]]) == TRUE){
+    wrong.dates2$date.completed[[i]] <- wrong.dates2$date.received[[i]] + 9
+  }
+}
+# no more NA's
+summary(wrong.dates2[c(3,2,4)])
+
+# now we fix errors in chronology causing negative time calculations
+summary(wrong.dates2[c(19:21)])
+
+# start with received coming before poured
 wrong.dates2$date.received > wrong.dates2$date.poured
+wrong.dates2[c(2,3,6,7),c(3,2,4)]
+
+# then completed coming before poured
 wrong.dates2$date.poured > wrong.dates2$date.completed
-wrong.dates2$date.received > wrong.dates2$date.completed
+wrong.dates2$date.completed < wrong.dates2$date.poured
+wrong.dates2[c(1,4,5,8),c(3,2,4)]
 
-wrong.dates2$date.completed 
-wrong.dates2[,c(1,3,2,4)]
-
-wrong.dates2[7,]
-wrong.dates2$date.received[[2]]
-wrong.dates2$date.poured[[2]]
-wrong.dates2$date.poured[[2]] - 6
-
-wrong.dates2$date.received[[6]] > wrong.dates2$date.completed[[6]]
-wrong.dates2[6,]
-
-
-# NA values screw up the loop below
-wrong.dates2 %>% 
-  filter(is.na(date.received) == T | 
-           is.na(date.poured) == T | 
-           is.na(date.completed) == T)
-
-
-for (i in 1:nrow(wrong.dates2)){
- if (wrong.dates2$date.received[[i]] > wrong.dates2$date.poured[[i]]){
-   wrong.dates2$date.received[[i]] <- wrong.dates2$date.poured[[i]] - 6
- }
- if (wrong.dates2$date.poured[[i]] > wrong.dates2$date.completed[[i]]){
-   wrong.dates2$date.completed[[i]] <- wrong.dates2$date.poured[[i]] + 3
- }
- # if (wrong.dates2$date.received[[i]] > wrong.dates2$date.completed[[i]]){
- #   wrong.dates2$date.received[[i]] <- wrong.dates2$date.completed[[i]] - 9
- # }
+for (i in 1:dim(wrong.dates2)[1]){
+  # preprocessing time = poured - received; median = 6
+  if (wrong.dates2$date.received[[i]] > wrong.dates2$date.poured[[i]]){
+    wrong.dates2$date.received[[i]] <- wrong.dates2$date.poured[[i]] - 6
+  }
+  # postprocessing time = completed - poured; median = 3
+  if (wrong.dates2$date.completed[[i]] < wrong.dates2$date.poured[[i]]){
+    wrong.dates2$date.completed[[i]] <- wrong.dates2$date.poured[[i]] + 3
+  }
 }
 
+# confirm chronology
+wrong.dates2$date.received <= wrong.dates2$date.poured
+wrong.dates2$date.poured <= wrong.dates2$date.completed
 
+# wrong.dates2 df has correct date values, need to join to original
+x[c(13,40,41,191),]
+wrong.dates2[c(1:4),]
 
-# as.data.frame(wrong.dates)[c(1,3,2,4)]
+# test loop
+# test.df <- tibble("row"=numeric())
+# counter=1
+# for (i in 1:nrow(x)){
+#   if (x$request[[i]] == wrong.dates2$request[[counter]] && counter<245){
+#     test.df[counter, 1] <- x$request[[i]]
+#     counter=counter+1
+#   }
+# }
+# another test loop
+# y <- x
+# counter=1
+# for (i in 1:nrow(x)){
+#     if (y$request[[i]] == wrong.dates2$request[[counter]] && counter < 244){
+#       y[i,c(2,3,4)] <- wrong.dates2[counter,c(2,3,4)]
+#       counter=counter+1
+#     }
+# }
+# x[c(13,40,41,191),]
+# wrong.dates2[c(1:4),]
+# y[c(13,40,41,191),]
 
-# check median values of anti-joined dataframe
+# change date values on original dataframe and recalculate
+# loop produces an error when counter > nrows, still fine though
+counter=1
+for (i in 1:nrow(x)){
+    if (x$request[[i]] == wrong.dates2$request[[counter]]){
+      x[i,c(2,3,4)] <- wrong.dates2[counter,c(2,3,4)]
+      counter=counter+1
+    }
+}
+# confirm
+x[c(13,40,41,191),]
+wrong.dates2[c(1:4),]
 
+# date summary looks okay now... except for NA's
+summary(calc_lead()[c(19:21)])
 
+summary(x)[,c(3,2,4)]
 
+# fill NA values using date.poured to calculate received and completed
+# guess on single NA
+x %>% filter(is.na(date.poured))
+(x[3608:3612,])
+(x$date.poured[3611] - x$date.poured[3609]) / 2 # 144 days between dates
+# just assign the middle date
+x$date.poured[3610] <- x$date.poured[3609] - 72
 
+# now date.poured has no NA's
+summary(x)[,c(3,2,4)]
+
+x.rec <- x %>% 
+  filter(is.na(date.received)) %>% 
+  mutate(date.received = date.poured - 6)
+
+counter=1
+for (i in 1:nrow(x)){
+  if (x$request[[i]] == x.rec$request[[counter]]){
+    x[i,c(2,3,4)] <- x.rec[counter,c(2,3,4)]
+    counter=counter+1
+  }
+}
+
+x.com <- x %>% 
+  filter(is.na(date.completed)) %>% 
+  mutate(date.completed = date.poured + 3)
+
+counter=1
+for (i in 1:nrow(x)){
+  if (x$request[[i]] == x.com$request[[counter]]){
+    x[i,c(2,3,4)] <- x.com[counter,c(2,3,4)]
+    counter=counter+1
+  }
+}
+
+# NOW we have zero NA values
+summary(calc_lead()[c(19:21)])
+
+# assign our new values
+x <- calc_lead()
 
 #######################
-
-x.temp %>% 
-  filter(postprocessing.time < 0)
-
-
-which.min(x.temp$preprocessing.time)
-
-
-which.min(x.temp$lead.time)
-as.data.frame(x.temp[3058,])
-# date mislabeled as 2513 instead of 2013
-x$date.received[3341] <- as.Date("2013-11-01")
-
-
-
-# find NA values dates
-which(is.na(x$date.received)==T)
-which(is.na(x$date.poured)==T)
-which(is.na(x$date.completed)==T)
-
-
-# DATES
-xx <- which(is.na(x$date.received)==T)
-x[xx,]
-
 
 # NOTES.ML
 ## seems fine
