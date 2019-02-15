@@ -7,6 +7,8 @@ if(!require(tidyverse)) install.packages("tidyverse")
 library(tidyverse)
 if(!require(naniar)) install.packages("naniar")
 library(naniar) # gg_miss
+if(!require(stringdist)) install.packages("stringdist")
+library(stringdist) # soundex
 
 # clear environment
 rm(list=ls())
@@ -303,7 +305,74 @@ x$notes.ml[spec.rows]
 #   select(-special.projects)
 
 ########
+# REQUESTED BY
 
+# remove double spaces, commas, periods, caps
+# filter for unique sounds
+x.requestor <- x %>%
+  mutate(requested.by = str_replace_all(requested.by, '\\  ', '')) %>% 
+  mutate(requested.by = str_replace_all(requested.by, '\\,', '')) %>% 
+  mutate(requested.by = str_replace_all(requested.by, '\\.', '')) %>% 
+  mutate(requested.by = str_to_lower(requested.by)) %>% 
+  select(request, requested.by) %>% 
+  mutate(sound = soundex(requested.by))
+
+# have some problem values at [1,], [125,]
+  unique(x.requestor$sound)
+  
+# problem rows: 1,540,3484
+x.requestor %>% 
+  filter(sound == "" | is.na(sound))
+x[c(1:3,539:542,3483:3485),]
+# replace NA/number values with next name in line
+x$requested.by[c(1,540,3484)] <- x$requested.by[c(2,541,3485)]
+
+x <- x %>%
+  mutate(requested.by = str_replace_all(requested.by, '\\  ', '')) %>% 
+  mutate(requested.by = str_replace_all(requested.by, '\\,', '')) %>% 
+  mutate(requested.by = str_replace_all(requested.by, '\\.', '')) %>% 
+  mutate(requested.by = str_to_lower(requested.by)) %>% 
+  mutate(sound = soundex(requested.by))
+
+length(unique(x$requested.by)) # 204 unique names
+length(unique(x$sound))        # 134 unique sounds
+
+unique.names <- unique(x$sound)
+
+# replace unique name with most popular unique name filtered by sound
+for (i in 1:length(unique.names)){
+  # find most popular name of same sounding names
+  replacement.name <- x %>% 
+    filter(sound == unique.names[[i]]) %>%
+    group_by(requested.by) %>% 
+    summarise(count=n()) %>% 
+    arrange(desc(count))
+  replacement.name <- replacement.name[[1]][1]
+  # if unique.name == requestor$sound, replace with replacement.name
+  x$requested.by[x$sound == unique.names[[i]]] <- 
+    replacement.name
+}
+
+length(unique(x$requested.by)) # 134 unique names now
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+unique(x$requested.by)
 # alloy.lbs NA values
 summary(is.na(x))
 x %>%
