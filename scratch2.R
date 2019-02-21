@@ -8,7 +8,9 @@ library(tidyverse)
 if(!require(naniar)) install.packages("naniar")
 library(naniar) # gg_miss
 if(!require(stringdist)) install.packages("stringdist")
-library(stringdist) # soundex
+library(stringdist) # soundex?
+if(!require(phonics)) install.packages("phonics")
+library(phonics) # soundex?
 
 # clear environment
 rm(list=ls())
@@ -224,14 +226,15 @@ wrong.dates2[c(1:4),]
 # loop produces an error when counter > nrows, still fine though
 counter=1
 for (i in 1:nrow(x)){
-    if (x$request[[i]] == wrong.dates2$request[[counter]]){
-      x[i,c(2,3,4)] <- wrong.dates2[counter,c(2,3,4)]
-      counter=counter+1
-    }
+  if (counter == nrow(wrong.dates2)+1){break}
+  if (x$request[[i]] == wrong.dates2$request[[counter]]){
+    x[i,c(2,3,4)] <- wrong.dates2[counter,c(2,3,4)]
+    counter=counter+1
+  }
 }
 # confirm
-x[c(13,40,41,191),]
-wrong.dates2[c(1:4),]
+x[c(13,40,41,191,3573),]
+wrong.dates2[c(1:4,244),]
 
 # date summary looks okay now... except for NA's
 summary(calc_lead()[c(19:21)])
@@ -353,24 +356,109 @@ for (i in 1:length(unique.names)){
     replacement.name
 }
 
-length(unique(x$requested.by)) # 134 unique names now
+# 129 unique names now
+length(unique(x$requested.by)) 
+# but we see mispellings such as adamotvits or lowek
+unique(x$requested.by)
 
+# not many options but to skim thru manually
+name.levels <- as.data.frame(table(x$requested.by))
+name.levels
+name.levels %>% arrange(-Freq,Var1)
 
+# notes regarding misspellings
+# convert all vits to adamovits
+# bald to archibald
+# heid to aufderheide
+# carr to b carr
+# contains yu convert to edward yu
+# fountain g to gerry fountaine
+# henryc and herry c to henry c
+# jigel j, rigelj to rigel j
+# all lowes/ lowe to k lowe
+# vivas to p vivas
+# skolund to skoglund
+# showmanc to showman
+# yeoman to yeomans
 
+# create some dummy dfs to check filter efficacy
+# xx <- dplyr::filter(x, grepl('vits', requested.by)) # m adamovits
+# xx <- dplyr::filter(x, grepl('bald', requested.by)) # j archibald
+# xx <- dplyr::filter(x, grepl('heid', requested.by)) # r aufderheide
+# xx <- dplyr::filter(x, grepl('carr', requested.by)) # b carr
+# xx <- dplyr::filter(x, grepl('yu', requested.by)) # e yu
+# xx <- dplyr::filter(x, grepl('tain', requested.by)) # g fountaine
+# xx <- dplyr::filter(x, grepl('herr', requested.by)) # henry c
+# xx <- dplyr::filter(x, grepl('igel', requested.by)) # j rigel
+# xx <- dplyr::filter(x, grepl('lowe', requested.by)) # k lowe
+# xx <- dplyr::filter(x, grepl('vivas', requested.by)) # p vivas
+# xx <- dplyr::filter(x, grepl('lund', requested.by)) # m skoglund
+# xx <- dplyr::filter(x, grepl('showm', requested.by)) # r showman
+# xx <- dplyr::filter(x, grepl('yeom', requested.by)) # n yeomans
 
+# another dummy to test replacement
+xx <- x
+# need to duplicate column to avoid most recent if() overwriting previous 
+xx %>% 
+  mutate(requested.by.tf = ifelse(requested.by =="clingerman m", "TRUE", "FALSE")) %>% 
+  # mutate(requested.by.tf = ifelse(requested.by =="belt p", "TRUE", "FALSE")) %>%
+  select(requested.by, requested.by.tf)
+# adding new column seems to work
+xx %>% 
+  mutate(requested.by.tf = requested.by) %>%
+  mutate(requested.by.tf = ifelse(grepl('man',requested.by), "CLINGER", requested.by.tf)) %>% 
+  mutate(requested.by.tf = ifelse(grepl('belt',requested.by), "BELT", requested.by.tf)) %>%
+  select(requested.by, requested.by.tf)
+# test df using the filters
+xx <- xx %>% 
+  mutate(requested.by.tf = requested.by) %>%
+  mutate(requested.by.tf = ifelse(grepl('vits',requested.by), "mark adamovits", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('bald',requested.by), "jim archibald", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('heid',requested.by), "ron aufderheide", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('carr',requested.by), "ben carr", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('yu',requested.by), "edward yu", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('tain',requested.by), "gerry fountaine", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('herr',requested.by), "henry c", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('henr',requested.by), "henry c", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('igel',requested.by), "judy rigel", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('lowe',requested.by), "kathy lowe", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('vivas',requested.by), "paula vivas", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('lund',requested.by), "m skoglund", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('showm',requested.by), "ralph showman", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('wang',requested.by), "xianping wang", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('hart',requested.by), "matt hartman", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('yeom',requested.by), "n yeomans", requested.by.tf))
+  # select(requested.by, requested.by.tf)
 
+# checking names again, seems like most are alright, only 104 unique now
+name.levels <- as.data.frame(table(xx$requested.by.tf))
+name.levels
+name.levels %>% arrange(-Freq,Var1)
+  
+# actually do the fixing
+x <- x %>% 
+  mutate(requested.by.tf = requested.by) %>%
+  mutate(requested.by.tf = ifelse(grepl('vits',requested.by), "mark adamovits", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('bald',requested.by), "jim archibald", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('heid',requested.by), "ron aufderheide", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('carr',requested.by), "ben carr", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('yu',requested.by), "edward yu", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('tain',requested.by), "gerry fountaine", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('herr',requested.by), "henry c", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('henr',requested.by), "henry c", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('igel',requested.by), "judy rigel", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('lowe',requested.by), "kathy lowe", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('vivas',requested.by), "paula vivas", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('lund',requested.by), "m skoglund", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('showm',requested.by), "ralph showman", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('wang',requested.by), "xianping wang", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('hart',requested.by), "matt hartman", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('yeom',requested.by), "n yeomans", requested.by.tf)) %>% 
+  mutate(requested.by = requested.by.tf) %>% 
+  select(-requested.by.tf)
 
-
-
-
-
-
-
-
-
-
-
-
+#########################
+#
 
 unique(x$requested.by)
 # alloy.lbs NA values
