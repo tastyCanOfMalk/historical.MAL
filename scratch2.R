@@ -457,16 +457,60 @@ x <- x %>%
   mutate(requested.by = requested.by.tf) %>% 
   select(-requested.by.tf)
 
-#########################
-#
-
+# seems to be good enough
 unique(x$requested.by)
-# alloy.lbs NA values
-summary(is.na(x))
+#########################
+
+# only 2 missing customer names, replace with ASK
 x %>%
-  filter(is.na(x$alloy.lbs)==TRUE)
+  filter(is.na(x$customer.name)==TRUE)
+x$customer.name[c(3366,3377)] <- "ASK"
+
+#####################
+
+xx <- x %>% 
+  select(request, date.received, furnace.cycle)
+
+unique(xx$furnace.cycle)
+for (i in 1:nrow(xx)){
+  if (xx$furnace.cycle)
+}
+
+# two columns?
+# furnace = furnace name
+# cycle   = how many times furnace used
 
 
+
+
+
+
+
+
+
+
+
+
+
+###################
+# classification tree to determine product tested?
+# need to fix all these shit values
+unique(x$product.tested)
+
+xx <- x %>%
+  mutate(product.tested1 = str_replace_all(product.tested, '\\ ', '')) %>% 
+  mutate(product.tested1 = str_replace_all(product.tested, '\\,', '')) %>% 
+  mutate(product.tested1 = str_replace_all(product.tested, '\\.', '')) %>% 
+  mutate(product.tested1 = str_to_lower(   product.tested)) %>% 
+  mutate(sound2 = soundex(product.tested)) %>% 
+  select(product.tested,product.tested1,sound2)
+unique(xx$product.tested1)
+
+
+
+
+xx <- x %>%
+  filter(is.na(x$product.tested)==TRUE)
 
 
       
