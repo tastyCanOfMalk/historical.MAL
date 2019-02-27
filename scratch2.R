@@ -460,6 +460,7 @@ x <- x %>%
 # seems to be good enough
 unique(x$requested.by)
 #########################
+# CUSTOMER NAMES
 
 # only 2 missing customer names, replace with ASK
 x %>%
@@ -467,6 +468,51 @@ x %>%
 x$customer.name[c(3366,3377)] <- "ASK"
 
 #####################
+# ALLOY USED
+
+unique(x$alloy)
+length(unique(x$alloy)) # 60
+
+# convert case, remove punctuations
+x <- x %>%
+  mutate(alloy = str_replace_all(alloy, '\\  ', '')) %>% 
+  mutate(alloy = str_replace_all(alloy, '\\,', '')) %>% 
+  mutate(alloy = str_replace_all(alloy, '\\.', '')) %>% 
+  mutate(alloy = str_to_lower(   alloy))
+
+length(unique(x$alloy)) # 47
+
+x <- x %>% 
+  mutate(alloy.new = alloy) %>%
+  mutate(alloy.new = str_replace_all(alloy.new, "[:punct:]","none")) %>% 
+  mutate(alloy.new = ifelse(grepl('al',alloy), "aluminum", alloy.new)) %>% 
+  mutate(alloy.new = ifelse(grepl('di',alloy),      "ductile iron", alloy.new)) %>% 
+  mutate(alloy.new = ifelse(grepl('ductile',alloy), "ductile iron", alloy.new)) %>%
+  mutate(alloy.new = ifelse(grepl('le iron',alloy), "ductile iron", alloy.new)) %>% 
+  mutate(alloy.new = ifelse(grepl('gray',alloy),   "grey iron", alloy.new)) %>% 
+  mutate(alloy.new = ifelse(grepl('y iron',alloy), "grey iron", alloy.new)) %>% 
+  mutate(alloy.new = ifelse(grepl('cg',alloy), "cgi", alloy.new)) %>% 
+  mutate(alloy.new = ifelse(grepl('brass',alloy), "bras", alloy.new)) %>% 
+  mutate(alloy.new = ifelse(grepl('s steel',alloy), "stainless", alloy.new)) %>%
+  mutate(alloy.new = ifelse(grepl('44',alloy),      "stainless", alloy.new)) %>%
+  mutate(alloy.new = ifelse(grepl('ss',alloy),      "stainless", alloy.new)) %>%
+  mutate(alloy.new = ifelse(grepl('teel',alloy), "lc steel", alloy.new)) %>% 
+  mutate(alloy.new = ifelse(grepl('bras',alloy), "brass", alloy.new)) %>% 
+  mutate(alloy.new = ifelse(alloy.new == "0" | 
+                              alloy.new == "none" | 
+                              alloy.new == "unknown", NA, alloy.new)) %>% 
+  mutate(alloy = alloy.new) %>% 
+  select(-alloy.new)
+
+# confirm
+unique(x$alloy)
+length(unique(x$alloy)) # 11
+
+
+
+
+
+
 
 xx <- x %>% 
   select(request, date.received, furnace.cycle)
