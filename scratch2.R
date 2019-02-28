@@ -2,7 +2,6 @@
 #   notes.ml
 #   special.projects
 
-
 if(!require(tidyverse)) install.packages("tidyverse")
 library(tidyverse)
 if(!require(naniar)) install.packages("naniar")
@@ -11,6 +10,8 @@ if(!require(stringdist)) install.packages("stringdist")
 library(stringdist) # soundex?
 if(!require(phonics)) install.packages("phonics")
 library(phonics) # soundex?
+if(!require(lexicon)) install.packages("lexicon")
+library(lexicon) # common_names
 
 # clear environment
 rm(list=ls())
@@ -55,8 +56,10 @@ names[c(12,14)] <- c("alloy.lbs", "sand.lbs")
 colnames(x) <- names
 glimpse(x)
 
+########################
 # REQUEST
-## request should be sequential, we'll simple make request = to row number
+
+# request should be sequential, we'll simple make request = to row number
 which(duplicated(x$request)==TRUE)
 as.data.frame(t(x[3609:3611,]))
 x <- x %>% 
@@ -65,10 +68,12 @@ x <- x %>%
 which(duplicated(x$request)==TRUE)
 get_levels(x,1)
 
+###########################
 # ID
 x <- x %>% 
   select(-id)
 
+###########################
 # CONVERT TO DATES
 x <- x %>% 
   mutate(date.received = as.Date(x$date.received, "%m/%d/%Y")) %>% 
@@ -283,12 +288,12 @@ summary(calc_lead()[c(19:21)])
 x <- calc_lead()
 
 #######################
-
 # NOTES.ML
 ## seems fine
 x$notes.ml[!is.na(x$notes.ml)]
 which(is.na(x$notes.ml)==T)
 
+##########################
 # SPECIAL.PROJECTS
 # list non-NA values in special projects
 x$special.projects[!is.na(x$special.projects)]
@@ -508,59 +513,208 @@ x <- x %>%
 unique(x$alloy)
 length(unique(x$alloy)) # 11
 
+########################
+# FURNACE CYCLE
+# split into furnace and cycle
 
+# since aluminum uses a different furnace, change all to NA
+x$furnace.cycle[x$alloy=="aluminum"] <- NA
 
-
-
-
-
+# test df
+# select first letter to call furnace
 xx <- x %>% 
-  select(request, date.received, furnace.cycle)
+  select(request, furnace.cycle, alloy) %>% 
+  filter(alloy != "aluminum") %>% 
+  mutate(furnace = str_sub(furnace.cycle,1,1)) %>% 
+  mutate(cycle = NA) %>% 
+  mutate(furnace.name = NA)
 
-unique(xx$furnace.cycle)
+# some NA values
+xx[is.na(xx$furnace.cycle),]
+
+# if NA, pull value above
 for (i in 1:nrow(xx)){
-  if (xx$furnace.cycle)
+  if (is.na(xx$furnace[[i]])){
+    xx$furnace[[i]] <- xx$furnace[[i-1]]
+  }
 }
 
-# two columns?
-# furnace = furnace name
-# cycle   = how many times furnace used
+# increment if furnace before = furnace current
+# if not, assign value = 1
+cycle.counter=1
+for (i in 2:nrow(xx)){
+  # first row = 1
+  xx$cycle[[1]] <- 1
+  # vars 
+  before =  i-1
+  current = i
+  # current != before, start counter over
+  if (xx$furnace[[current]] != xx$furnace[[before]]){
+    cycle.counter=1
+    xx$cycle[[current]] <- cycle.counter
+  }
+  if (xx$furnace[[current]] == xx$furnace[[before]]){
+    cycle.counter=cycle.counter+1
+    xx$cycle[[current]] <- cycle.counter
+  }
+}
 
+data("common_names")
+names <- common_names[1:length(common_names)]
+names <- sample(names)
 
+name.counter = 0
+for (i in 1:nrow(xx)){
+  if (xx$cycle[[i]] == 1){
+    name.counter=name.counter+1
+    xx$furnace.name[[i]] <- names[[name.counter]]
+  }
+  if (xx$cycle[[i]] != 1){
+    xx$furnace.name[[i]] <- names[[name.counter]]
+  }
+}
 
+x <- full_join(x,xx)
 
+#################################
+# CASTING TYPE
 
+# way too many unique
+unique(x$casting.type)
+length(unique(x$casting.type)) # 273
 
+x <- x %>%
+  mutate(casting.type1 = str_replace_all(casting.type, '\\  ', ' ')) %>% 
+  mutate(casting.type1 = str_replace_all(casting.type, '\\,', ' ')) %>%
+  mutate(casting.type1 = str_replace_all(casting.type, '\\.', ' ')) %>%
+  mutate(casting.type1 = str_to_lower(   casting.type)) %>% 
+  mutate(casting.type = casting.type1) %>% 
+  select(-casting.type1)
 
+# unique(xx$casting.type)
+# length(unique(xx$casting.type)) # 264 
 
+# xxx <- xx %>% 
+#   filter(grepl('filter', casting.type))
+# unique(xxx$casting.type)
 
+x <- x %>% 
+  mutate(casting.type1 = casting.type) %>%
+  mutate(casting.type1 = ifelse(grepl('cube',casting.type), "shrink cube", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('ero',casting.type), "erosion wedge", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('sleeve',casting.type), "sleeves", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('shake',casting.type), "shakeout tree", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('page',casting.type), "warpage block", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('ration',casting.type), "penetration", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('pene',casting.type), "penetration", casting.type1)) %>%
+  mutate(casting.type1 = ifelse(grepl('graphit',casting.type), "graphite step", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('cone',casting.type), "stepcone", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('steps',casting.type), "stepcone", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('graphite',casting.type), "graphite stepcones", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('fluid',casting.type), "fluidity spiral", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('buck',casting.type), "belt buckles", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('gator',casting.type), "gator", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('soot p',casting.type), "sootplate", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('gear',casting.type), "gear mold", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('rotor',casting.type), "brake rotor", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('pig',casting.type), "pigs", casting.type1)) %>%
+  mutate(casting.type1 = ifelse(grepl('impel',casting.type), "di impeller", casting.type1)) %>% 
+  mutate(casting.type = casting.type1) %>% 
+  select(-casting.type1)
 
+# unique(xx$casting.type)
+# length(unique(xx$casting.type)) # 119
+# 
+# xxx <- xx %>% 
+#   filter(grepl('pig', casting.type1))
+# unique(xxx$casting.type1)
 
+# slightly better, not perfect
 
-
-###################
-# classification tree to determine product tested?
-# need to fix all these shit values
+#################################
+# PRODUCT TESTED
 unique(x$product.tested)
+length(unique(x$product.tested)) # 175
 
-xx <- x %>%
-  mutate(product.tested1 = str_replace_all(product.tested, '\\ ', '')) %>% 
-  mutate(product.tested1 = str_replace_all(product.tested, '\\,', '')) %>% 
-  mutate(product.tested1 = str_replace_all(product.tested, '\\.', '')) %>% 
+x <- x %>%
+  mutate(product.tested1 = str_replace_all(product.tested, '\\ ', ' ')) %>% 
+  mutate(product.tested1 = str_replace_all(product.tested, '\\,', ' ')) %>% 
+  mutate(product.tested1 = str_replace_all(product.tested, '\\.', ' ')) %>% 
   mutate(product.tested1 = str_to_lower(   product.tested)) %>% 
-  mutate(sound2 = soundex(product.tested)) %>% 
-  select(product.tested,product.tested1,sound2)
-unique(xx$product.tested1)
+  mutate(product.tested = product.tested1) %>% 
+  select(-product.tested1)
 
+unique(xx$product.tested)
+length(unique(xx$product.tested)) # 170
+# 
+# xxx <- xx %>%
+#   filter(grepl('pep s', product.tested))
+# unique(xxx$product.tested)
+# 
+# xx <- xx %>% 
+#   mutate(product.tested1 = product.tested) %>%
+#   mutate(product.tested1 = ifelse(grepl('pep=',product.tested), "pepset", product.tested1))  
+#   mutate(product.tested = product.tested1) %>% 
+#   select(-product.tested1)
+# 
+# unique(xx$product.tested)
+# length(unique(xx$product.tested))
+  
+#################################
+# SAND TYPE
+unique(x$sand.type)
+length(unique(x$sand.type)) # 113
 
+x <- x %>%
+  mutate(sand.type1 = str_replace_all(sand.type, '\\ ', ' ')) %>% 
+  mutate(sand.type1 = str_replace_all(sand.type, '\\,', ' ')) %>% 
+  mutate(sand.type1 = str_replace_all(sand.type, '\\.', ' ')) %>% 
+  mutate(sand.type1 = str_to_lower(   sand.type)) %>% 
+  mutate(sand.type = sand.type1) %>% 
+  select(-sand.type1)
 
+# unique(xx$sand.type)
+# length(unique(xx$sand.type)) # 111
+# 
+# xxx <- xx %>%
+#   filter(grepl('410', sand.type))
+# unique(xxx$sand.type)
 
-xx <- x %>%
-  filter(is.na(x$product.tested)==TRUE)
+x <- x %>%
+  mutate(sand.type1 = sand.type) %>%
+  mutate(sand.type1 = ifelse(grepl('w41',sand.type), "w410", sand.type1)) %>% 
+  mutate(sand.type = sand.type1) %>%
+  select(-sand.type1)
 
+# unique(xx$sand.type)
+# length(unique(xx$sand.type))
 
-      
+################################
 get_levels(x)
 gg_miss_var(x, show_pct = T)
 gg_miss_which(x)
 glimpse(x)
+
+y <- x %>% 
+  select(request,
+         date.received,
+         date.poured,
+         date.completed,
+         requested.by,
+         customer.name,
+         product.tested,
+         casting.type,
+         number.of.castings,
+         alloy,
+         alloy.lbs,
+         sand.type,
+         sand.lbs,
+         total.hours,
+         total.cost,
+         preprocessing.time,
+         postprocessing.time,
+         lead.time,
+         furnace.name,
+         cycle,
+         notes.ml)
+glimpse(y)
