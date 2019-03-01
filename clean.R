@@ -716,5 +716,13 @@ y <- x %>%
          lead.time,
          furnace.name,
          cycle,
-         notes.ml)
+         notes.ml) %>% 
+  mutate(requested.by=as.factor(requested.by)) %>% 
+  mutate(customer.name=as.factor(customer.name)) %>% 
+  mutate(product.tested=as.factor(product.tested)) %>% 
+  mutate(casting.type=as.factor(casting.type)) %>% 
+  mutate(alloy=as.factor(alloy)) %>% 
+  mutate(sand.type=as.factor(sand.type)) %>% 
+  mutate(furnace.name=as.factor(furnace.name)) 
 glimpse(y)
+
