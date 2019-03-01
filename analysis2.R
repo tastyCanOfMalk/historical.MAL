@@ -17,18 +17,21 @@ summarise(yy,
           life=(max(date.poured)-min(date.poured)),
           castings=sum(number.of.castings)) %>% 
           left_join(reshape2::dcast(yy,furnace.name~alloy))
-summarise(yy,
+y2 <- summarise(yy,
           count=n(),
           medianYear=median(year),
-          # startDate=min(date.poured),
+          startDate=min(date.poured),
           # endDate=max(date.poured),
           life=(max(date.poured)-min(date.poured)),
+          uniqueDays=length(unique(date.poured)),
           castings=sum(number.of.castings),
-          n = list(enframe(table(alloy))) ) %>%
+          n = list(enframe(table(alloy))),
+          
+          ) %>%
   unnest %>%
   spread(name, value, fill = 0)
 
-
+y2
 
 
 y %>% 
@@ -45,3 +48,5 @@ y %>%
   # mutate(furnace.name=as.factor(furnace.name)) %>% 
   count(alloy) %>% 
   arrange(desc(n))
+
+  
