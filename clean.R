@@ -526,6 +526,7 @@ xx <- x %>%
   select(request, furnace.cycle, alloy) %>% 
   filter(alloy != "aluminum") %>% 
   mutate(furnace = str_sub(furnace.cycle,1,1)) %>% 
+  mutate(furnace = str_to_lower(furnace)) %>% 
   mutate(cycle = NA) %>% 
   mutate(furnace.name = NA)
 
@@ -538,6 +539,25 @@ for (i in 1:nrow(xx)){
     xx$furnace[[i]] <- xx$furnace[[i-1]]
   }
 }
+
+# zeros confused with letter o
+xx[1543:1576,]
+# replace zeros with o's
+xx[xx$furnace==0,][4] <- "o"
+
+# M between L's
+xx[2679:2684,]
+xx[xx$request==3468,][4] <- "m"
+
+# O between N's
+xx[2725:2729,]
+# switch place
+which(xx$request==3517) # 2726
+xx[2726,][1] <- 3518
+xx[2727,][1] <- 3517
+
+xx <- xx %>% 
+  arrange(request)
 
 # increment if furnace before = furnace current
 # if not, assign value = 1
@@ -561,6 +581,7 @@ for (i in 2:nrow(xx)){
 
 data("common_names")
 names <- common_names[1:length(common_names)]
+set.seed(1111)
 names <- sample(names)
 
 name.counter = 0
