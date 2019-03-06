@@ -1,15 +1,14 @@
-# done:
-#   notes.ml
-#   special.projects
-
 if(!require(tidyverse)) install.packages("tidyverse")
 library(tidyverse)
+if(!require(gridExtra)) install.packages("gridExtra")
+library(gridExtra)
+
 if(!require(naniar)) install.packages("naniar")
 library(naniar) # gg_miss
-if(!require(stringdist)) install.packages("stringdist")
-library(stringdist) # soundex?
-if(!require(phonics)) install.packages("phonics")
-library(phonics) # soundex?
+# if(!require(stringdist)) install.packages("stringdist")
+# library(stringdist) # soundex?
+# if(!require(phonics)) install.packages("phonics")
+# library(phonics) # soundex?
 if(!require(lexicon)) install.packages("lexicon")
 library(lexicon) # common_names
 
@@ -40,6 +39,7 @@ get_levels <- function(df, col){
   levels <- x.levels[order(-x.levels[,2]),]
   return(levels[col,])
 }
+
 get_levels(x)
 
 # MISSING DATA

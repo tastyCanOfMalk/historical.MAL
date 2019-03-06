@@ -1,0 +1,222 @@
+---
+title: "Historical MAL - Cleaning Data"
+author: "Edward Yu"
+date: "March 6, 2019"
+output:
+  html_document:
+      theme: flatly
+      highlight: tango
+      toc: true
+      toc_float:
+        collapsed: true
+      toc_depth: 2
+      df_print: paged
+      code_folding: show
+      # fig_width: 7
+      # fig_height: 6
+      # fig_caption: true
+      # citation_package: natbib
+# bibliography: bib.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo    = TRUE,
+                      error   = FALSE,
+                      message = FALSE,
+                      warning = FALSE)
+
+if(!require(tidyverse)) install.packages("tidyverse")
+library(tidyverse)
+if(!require(gridExtra)) install.packages("gridExtra")
+library(gridExtra)
+if(!require(naniar)) install.packages("naniar")
+library(naniar) # gg_miss
+# if(!require(stringdist)) install.packages("stringdist")
+# library(stringdist) # soundex?
+# if(!require(phonics)) install.packages("phonics")
+# library(phonics) # soundex?
+if(!require(lexicon)) install.packages("lexicon")
+library(lexicon) # common_names
+
+# clear environment
+rm(list=ls())
+
+# IMPORT DATA
+setwd("~/R/historical.MAL")
+# setwd("I:/Code-CAD/R/historical.MAL")
+```
+
+# Introduction
+If you are interested I have a small project for R, which is very useful. It has to do with history records of MAL. Here is some basic info:
+  
+  * Goal: Clean up and consolidate dataset to enable easy searching of past melt
+records
+  * Tasks: 
+    + Mostly working with strings removing duplicates ( E. Yu, YU, Yu Edward …)
+    + Removing empty records
+    + Missing data
+    + Multiple variables in one column
+  
+There might be other things to do but I have not spent much time looking at the dataset. We could also pull some basic stats on usage, costs, repeats etc. I don’t know your skill level, but it is relatively simple project and I am estimating it would take me about 8 hrs of work. Actual coding, if you know what to use, could be done in less than 1 hour but that requires proficiency in typing and in R.  
+
+I just noticed that sand for this year should have all been W410, excel incremented the name by 1 each time. I think I might be adding information about individual tests from this year incrementally as it comes in and since it is only several rows, perhaps you can delete the entire set of rows from this year, if that makes things easier on your end.
+
+# Cleaning
+This is a cleaning project. We need to clean clean clean clean clean...
+
+## Preliminary exploration
+There are a few key steps that are important before manipulating our data:
+
+  * Check the structure of our data
+  * Check the unique levels of our variables
+  * Determine which variables are missing data
+
+
+### Import
+There are a few things we see right off the bat.
+
+  * Redundant `ID` variable
+  * Poorly named variables (e.g. `lbs`, `Amount used`)
+  * Dates incorrectly formatted
+  * `Special Projects` potentially useless
+  
+```{r}
+x <- read_csv("data/History.csv")
+glimpse(x)
+```
+
+### Get variable levels
+Sorting by unique variable levels will give us an idea of how many unique datapoints we have in each variable category. We can make a few conclusions based on this information.
+
+  * `Request` is apprently doing the job of `ID`
+  * We likely do not have 273 unique types of castings, as suggested by `Casting type`
+  * We likely do not pour using 60 different alloys, as suggested by `Alloy`
+  * We see only 19 unique variables in `Special Projects`
+
+```{r}
+# FUNCTION to get levels by column
+get_levels <- function(df, col){
+  x.levels <- cbind(colnames(df),
+                    (as.data.frame(sapply(df,function(x) length(unique(x)))))
+  )
+  colnames(x.levels) <- c("var","levels")
+  row.names(x.levels) <- NULL
+  levels <- x.levels[order(-x.levels[,2]),]
+  return(levels[col,])
+}
+
+get_levels(x)
+```
+
+### Missing data
+The naniar package makes visualization of missing data quite simple. Some of our previous observations come up again when looking at the plots.
+
+  * `Special Projects` is highly unused
+  * `ID` is highly unused
+
+```{r}
+# MISSING DATA
+g1 <- gg_miss_var(x, show_pct = T)
+g2 <- gg_miss_which(x)
+grid.arrange(g1,g2,nrow=2)
+```
+
+
+
+
+## Quarterly Results {.tabset}
+
+### By Product
+stuf herekfajhdlkahlkjflnkja
+ds
+dsfdsfsgfdgfgsdf
+
+### By Region
+(tab content)kdsjfnkjdfsbjgfvkzkf
+
+## Quarterly Results {.tabset .tabset-fade .tabset-pills}
+
+### By Product
+stuf herekfajhdlkahlkjflnkja
+ds
+dsfdsfsgfdgfgsdf
+
+### By Region
+(tab content)kdsjfnkjdfsbjgfvkzkf
+
+## H2
+"Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam.
+
+### H3
+
+```{r}
+mtcars
+```
+
+# H1
+
+## H2
+```{r}
+if(!require(tidyverse)) install.packages("tidyverse")
+library(tidyverse)
+if(!require(naniar)) install.packages("naniar")
+library(naniar) # gg_miss
+if(!require(stringdist)) install.packages("stringdist")
+library(stringdist) # soundex?
+if(!require(phonics)) install.packages("phonics")
+library(phonics) # soundex?
+if(!require(lexicon)) install.packages("lexicon")
+library(lexicon) # common_names
+
+# clear environment
+rm(list=ls())
+
+# IMPORT DATA
+setwd("~/R/historical.MAL")
+# setwd("I:/Code-CAD/R/historical.MAL")
+x <- read_csv("data/History.csv")
+glimpse(x)
+
+# VARIABLE LEVELS
+# x.levels <- cbind(colnames(x),
+#                   (as.data.frame(sapply(x,function(x) length(unique(x)))))
+# )
+# colnames(x.levels) <- c("var","levels")
+# row.names(x.levels) <- NULL
+# x.levels[order(-x.levels[,2]),]
+
+# FUNCTION to get levels by column
+get_levels <- function(df, col){
+  x.levels <- cbind(colnames(df),
+                    (as.data.frame(sapply(df,function(x) length(unique(x)))))
+  )
+  colnames(x.levels) <- c("var","levels")
+  row.names(x.levels) <- NULL
+  levels <- x.levels[order(-x.levels[,2]),]
+  return(levels[col,])
+}
+get_levels(x)
+
+```
+
+### H3
+"Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?"
+
+#### H4
+"Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?"
+
+# H1
+
+## H2
+"Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?"
+
+### H3
+"Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?"
+
+#### H4
+
+##### H5
+"Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?"
+
+###### H6
+"Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?"
