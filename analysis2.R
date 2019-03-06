@@ -34,6 +34,7 @@ y2 <- summarise(yy,
 y2
 
 
+
 y %>% 
   filter(!is.na(furnace.name)) %>% 
   mutate(furnace.name=as.factor(furnace.name)) %>% 
@@ -44,9 +45,11 @@ y %>%
   filter(!is.na(furnace.name)) %>% 
   mutate(alloy=as.factor(alloy)) %>% 
   mutate(all=count(as.factor(alloy)))
-  group_by(furnace.name) %>% 
+  group_by(furnace.name) %>%
   # mutate(furnace.name=as.factor(furnace.name)) %>% 
   count(alloy) %>% 
   arrange(desc(n))
 
-  
+
+t1 <- x %>% 
+  filter(furnace.name=="pearlie")

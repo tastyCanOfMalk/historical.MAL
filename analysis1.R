@@ -20,6 +20,7 @@ g1 <- y %>%
 # Histogram of pours per year
 g2 <- y %>% 
   mutate(year=as.factor(substring(x$date.poured,1,4))) %>% 
+  filter(!is.na(year)) %>% 
   ggplot(aes(x=year,fill=..count..))+
   geom_histogram(stat="count")+
   ggtitle("Pours per year")+
@@ -33,6 +34,7 @@ grid.arrange(g1,g2,ncol=2)
 y %>% 
   mutate(month=as.factor(substring(months.Date(x$date.poured),1,3))) %>% 
   mutate(year=as.factor(substring(x$date.poured,1,4))) %>% 
+  filter(!is.na(year)) %>% 
   ggplot(aes(x=month,fill=..count..))+
   geom_histogram(stat="count")+
   scale_x_discrete(limits=c("Jan","Feb","Mar","Apr","May","Jun",
@@ -41,7 +43,7 @@ y %>%
   scale_fill_viridis()+
   theme(legend.position = "none")+
   # coord_flip()+
-  theme(axis.text.x = element_text(angle=45,hjust=1))+
+  theme(axis.text.x = element_text(angle=90,hjust=1,vjust=0.5,size=7))+
   facet_wrap(year~.)
 
 # barplot of longest lasting furnaces
