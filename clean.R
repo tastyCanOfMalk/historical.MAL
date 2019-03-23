@@ -2,13 +2,12 @@ if(!require(tidyverse)) install.packages("tidyverse")
 library(tidyverse)
 if(!require(gridExtra)) install.packages("gridExtra")
 library(gridExtra)
-
 if(!require(naniar)) install.packages("naniar")
 library(naniar) # gg_miss
-# if(!require(stringdist)) install.packages("stringdist")
-# library(stringdist) # soundex?
-# if(!require(phonics)) install.packages("phonics")
-# library(phonics) # soundex?
+if(!require(stringdist)) install.packages("stringdist")
+library(stringdist) # soundex?
+if(!require(phonics)) install.packages("phonics")
+library(phonics) # soundex?
 if(!require(lexicon)) install.packages("lexicon")
 library(lexicon) # common_names
 
@@ -16,7 +15,7 @@ library(lexicon) # common_names
 rm(list=ls())
 
 # IMPORT DATA
-setwd("~/R/historical.MAL")
+setwd("D:/Code/R/historical.MAL")
 # setwd("I:/Code-CAD/R/historical.MAL")
 x <- read_csv("data/History.csv")
 glimpse(x)
