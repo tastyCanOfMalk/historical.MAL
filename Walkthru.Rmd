@@ -377,7 +377,352 @@ x$notes.ml[spec.rows]
 
 ## $requested.by
 Remove duplicate and misspelled names.
-```{r}
 
+```{r}
+# remove double spaces, commas, periods, caps, generate soundex
+x <- x %>%
+  mutate(requested.by = str_replace_all(requested.by, '\\  ', '')) %>% 
+  mutate(requested.by = str_replace_all(requested.by, '\\,', '')) %>% 
+  mutate(requested.by = str_replace_all(requested.by, '\\.', '')) %>% 
+  mutate(requested.by = str_to_lower(requested.by)) %>% 
+  mutate(sound = soundex(requested.by,clean=F))
+
+# list unique sounds
+unique(x$sound)
+
+# find problem rows: 1,540,3484
+x.requestor %>% 
+  filter(sound == "" | is.na(sound))
+
+# check surrounding rows
+x[c(1:3,539:542,3483:3485),c(1,5,22)]
+
+# replace NA/number values with next name in line
+x$requested.by[c(1,540,3484)] <- x$requested.by[c(2,541,3485)]
+
+# unique names and sounds
+length(unique(x$requested.by)) # 204 unique names
+length(unique(x$sound))        # 132 unique sounds
+```
+
+We can see that we have quite a few unique names with less unique sounds. This might be because some names are misspelled and the misspellings don't change the sounds of the names. To address this we'll loop through each unique name, then take the sound of that name, grouped with all other names that have the same sound. Using this subset that all shares the same sound, we can sort the names in descending order, choosing the most popular and replacing all names by this most popular one.  We'll see this reduces the amount of unique names fom 204 to 132: the same value of unique sounds.
+
+```{r}
+unique.names <- unique(x$sound)
+# some names are misspelled but have the same sound
+# replace any same-sounding with top used name
+# replace unique name with most popular unique name filtered by sound
+for (i in 1:length(unique.names)){
+  # find most popular name of same sounding names
+  replacement.name <- x %>% 
+    filter(sound == unique.names[[i]]) %>%
+    group_by(requested.by) %>% 
+    summarise(count=n()) %>% 
+    arrange(desc(count))
+  replacement.name <- replacement.name[[1]][1]
+  # if unique.name == requestor$sound, replace with replacement.name
+  x$requested.by[x$sound == unique.names[[i]]] <- 
+    replacement.name
+}
+
+# 129 unique names now
+length(unique(x$requested.by)) 
+```
+
+Though we're in a better place, we still see mispelled names in our data. Not much choice but to manually sift through and decide which names should be replaced by what. After manual replacement, our total unique names dips again to 106 from 129.  
+
+```{r}
+# but we see mispellings such as adamotvits or lowek
+unique(x$requested.by)
+
+# not many options but to skim thru manually
+name.levels <- as.data.frame(table(x$requested.by))
+name.levels
+
+x <- x %>% 
+  mutate(requested.by.tf = requested.by) %>%
+  mutate(requested.by.tf = ifelse(grepl('vits',requested.by), "mark adamovits", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('bald',requested.by), "jim archibald", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('heid',requested.by), "ron aufderheide", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('carr',requested.by), "ben carr", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('yu',requested.by), "edward yu", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('tain',requested.by), "gerry fountaine", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('herr',requested.by), "henry c", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('henr',requested.by), "henry c", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('igel',requested.by), "judy rigel", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('lowe',requested.by), "kathy lowe", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('vivas',requested.by), "paula vivas", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('lund',requested.by), "m skoglund", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('showm',requested.by), "ralph showman", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('wang',requested.by), "xianping wang", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('hart',requested.by), "matt hartman", requested.by.tf)) %>%
+  mutate(requested.by.tf = ifelse(grepl('yeom',requested.by), "n yeomans", requested.by.tf)) %>% 
+  mutate(requested.by = requested.by.tf) %>% 
+  select(-requested.by.tf)
+
+# check length again
+length(unique(x$requested.by)) # 106
+# seems to be good enough
+unique(x$requested.by)
+```
+
+## $customer.name
+```{r}
+# only 2 missing customer names, replace with ASK
+x %>%
+  filter(is.na(x$customer.name)==TRUE)
+x$customer.name[c(3366,3377)] <- "ASK"
+```
+
+## $alloy
+We perform pretty much the same actions as we did above, with `requested.by`.
+
+```{r}
+unique(x$alloy)
+length(unique(x$alloy)) # 60
+
+# convert case, remove punctuations
+x <- x %>%
+  mutate(alloy = str_replace_all(alloy, '\\  ', '')) %>% 
+  mutate(alloy = str_replace_all(alloy, '\\,', '')) %>% 
+  mutate(alloy = str_replace_all(alloy, '\\.', '')) %>% 
+  mutate(alloy = str_to_lower(   alloy))
+
+length(unique(x$alloy)) # 47
+
+x <- x %>% 
+  mutate(alloy.new = alloy) %>%
+  mutate(alloy.new = str_replace_all(alloy.new, "[:punct:]","none")) %>% 
+  mutate(alloy.new = ifelse(grepl('al',alloy), "aluminum", alloy.new)) %>% 
+  mutate(alloy.new = ifelse(grepl('di',alloy),      "ductile iron", alloy.new)) %>% 
+  mutate(alloy.new = ifelse(grepl('ductile',alloy), "ductile iron", alloy.new)) %>%
+  mutate(alloy.new = ifelse(grepl('le iron',alloy), "ductile iron", alloy.new)) %>% 
+  mutate(alloy.new = ifelse(grepl('gray',alloy),   "grey iron", alloy.new)) %>% 
+  mutate(alloy.new = ifelse(grepl('y iron',alloy), "grey iron", alloy.new)) %>% 
+  mutate(alloy.new = ifelse(grepl('cg',alloy), "cgi", alloy.new)) %>% 
+  mutate(alloy.new = ifelse(grepl('brass',alloy), "bras", alloy.new)) %>% 
+  mutate(alloy.new = ifelse(grepl('s steel',alloy), "stainless", alloy.new)) %>%
+  mutate(alloy.new = ifelse(grepl('44',alloy),      "stainless", alloy.new)) %>%
+  mutate(alloy.new = ifelse(grepl('ss',alloy),      "stainless", alloy.new)) %>%
+  mutate(alloy.new = ifelse(grepl('teel',alloy), "lc steel", alloy.new)) %>% 
+  mutate(alloy.new = ifelse(grepl('bras',alloy), "brass", alloy.new)) %>% 
+  mutate(alloy.new = ifelse(alloy.new == "0" | 
+                              alloy.new == "none" | 
+                              alloy.new == "unknown", NA, alloy.new)) %>% 
+  mutate(alloy = alloy.new) %>% 
+  select(-alloy.new)
+
+# confirm
+unique(x$alloy)
+length(unique(x$alloy)) # 11
+```
+
+## $furnace.cycle
+This datapoint kept track of how many uses each furnace lining accumulated. Instead of using continuing with this way of measuring where we increment each number, we'll split the measure into two columns: one representing the furnace liner, the other representing how many pours it lasted.   
+
+First, we assign `NA` to all furnace values with alloys of aluminum as aluminum uses a different furnace. We then create a few new columns, the first of which is `furnace` and will represent the furnace lining being used; `furnace cycle` will increment with each use of the `furnace`; and `furnace.name` will be a more endearing name given to the furnace.   
+
+```{r}
+# since aluminum uses a different furnace, change all to NA
+x$furnace.cycle[x$alloy=="aluminum"] <- NA
+
+# test df
+# select first letter to call furnace
+xx <- x %>% 
+  select(request, furnace.cycle, alloy) %>% 
+  filter(alloy != "aluminum") %>% 
+  mutate(furnace = str_sub(furnace.cycle,1,1)) %>% 
+  mutate(furnace = str_to_lower(furnace)) %>% 
+  mutate(cycle = NA) %>% 
+  mutate(furnace.name = NA)
+
+# some NA values
+xx[is.na(xx$furnace.cycle),]
+
+# if NA, pull value above
+for (i in 1:nrow(xx)){
+  if (is.na(xx$furnace[[i]])){
+    xx$furnace[[i]] <- xx$furnace[[i-1]]
+  }
+}
+
+# zeros confused with letter o
+xx[1543:1576,]
+# replace zeros with o's
+xx[xx$furnace==0,][4] <- "o"
+
+# M between L's
+xx[2679:2684,]
+xx[xx$request==3468,][4] <- "m"
+
+# O between N's
+xx[2725:2729,]
+# switch place
+which(xx$request==3517) # 2726
+xx[2726,][1] <- 3518
+xx[2727,][1] <- 3517
+# rearrange rows
+xx <- xx %>% 
+  arrange(request)
+
+# increment furnace cycle if furnace before = furnace current
+# if not, assign value = 1
+cycle.counter=1
+for (i in 2:nrow(xx)){
+  # first row = 1
+  xx$cycle[[1]] <- 1
+  # vars 
+  before =  i-1
+  current = i
+  # current != before, start counter over
+  if (xx$furnace[[current]] != xx$furnace[[before]]){
+    cycle.counter=1
+    xx$cycle[[current]] <- cycle.counter
+  }
+  if (xx$furnace[[current]] == xx$furnace[[before]]){
+    cycle.counter=cycle.counter+1
+    xx$cycle[[current]] <- cycle.counter
+  }
+}
+
+# load names to assign to furnaces, shuffle them
+data("common_names")
+names <- common_names[1:length(common_names)]
+set.seed(1111)
+names <- sample(names)
+
+# assign names instead of letters to each furnace
+name.counter = 0
+for (i in 1:nrow(xx)){
+  if (xx$cycle[[i]] == 1){
+    name.counter=name.counter+1
+    xx$furnace.name[[i]] <- names[[name.counter]]
+  }
+  if (xx$cycle[[i]] != 1){
+    xx$furnace.name[[i]] <- names[[name.counter]]
+  }
+}
+
+# rejoin data
+x <- full_join(x,xx)
+```
+
+## $casting.type
+There are quite a few different kinds of castings. I've manually gone thru and renamed a few, it seems an improvement.
+
+```{r}
+# way too many unique
+unique(x$casting.type)
+length(unique(x$casting.type)) # 274
+
+# remove double spaces, commas, periods
+x <- x %>%
+  mutate(casting.type1 = str_replace_all(casting.type, '\\  ', ' ')) %>% 
+  mutate(casting.type1 = str_replace_all(casting.type, '\\,', ' ')) %>%
+  mutate(casting.type1 = str_replace_all(casting.type, '\\.', ' ')) %>%
+  mutate(casting.type1 = str_to_lower(   casting.type)) %>% 
+  mutate(casting.type = casting.type1) %>% 
+  select(-casting.type1)
+
+# unique(x$casting.type)
+length(unique(x$casting.type)) # 264
+
+x <- x %>% 
+  mutate(casting.type1 = casting.type) %>%
+  mutate(casting.type1 = ifelse(grepl('cube',casting.type), "shrink cube", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('ero',casting.type), "erosion wedge", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('sleeve',casting.type), "sleeves", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('shake',casting.type), "shakeout tree", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('page',casting.type), "warpage block", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('ration',casting.type), "penetration", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('pene',casting.type), "penetration", casting.type1)) %>%
+  mutate(casting.type1 = ifelse(grepl('graphit',casting.type), "graphite step", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('cone',casting.type), "stepcone", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('steps',casting.type), "stepcone", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('graphite',casting.type), "graphite stepcones", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('fluid',casting.type), "fluidity spiral", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('buck',casting.type), "belt buckles", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('gator',casting.type), "gator", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('soot p',casting.type), "sootplate", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('gear',casting.type), "gear mold", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('rotor',casting.type), "brake rotor", casting.type1)) %>% 
+  mutate(casting.type1 = ifelse(grepl('pig',casting.type), "pigs", casting.type1)) %>%
+  mutate(casting.type1 = ifelse(grepl('impel',casting.type), "di impeller", casting.type1)) %>% 
+  mutate(casting.type = casting.type1) %>% 
+  select(-casting.type1)
+
+# slightly better, not perfect
+unique(x$casting.type)
+length(unique(x$casting.type)) # 120
+```
+
+## $sand.type
+Not the most important variable, will change a few of the obvious errors.  
+
+```{r}
+unique(x$sand.type)
+length(unique(x$sand.type)) # 113
+
+x <- x %>%
+  mutate(sand.type1 = str_replace_all(sand.type, '\\ ', ' ')) %>% 
+  mutate(sand.type1 = str_replace_all(sand.type, '\\,', ' ')) %>% 
+  mutate(sand.type1 = str_replace_all(sand.type, '\\.', ' ')) %>% 
+  mutate(sand.type1 = str_to_lower(   sand.type)) %>% 
+  mutate(sand.type = sand.type1) %>% 
+  select(-sand.type1)
+
+# unique(x$sand.type)
+length(unique(x$sand.type)) # 111
+
+x <- x %>%
+  mutate(sand.type1 = sand.type) %>%
+  mutate(sand.type1 = ifelse(grepl('w41',sand.type), "w410", sand.type1)) %>% 
+  mutate(sand.type = sand.type1) %>%
+  select(-sand.type1)
+
+# unique(x$sand.type)
+length(unique(x$sand.type)) # 102
+```
+
+## Finalize, reorder variables
+We've done enough for some analysis, will reorder some variables for more clear presentation and change some column classes.  
+
+```{r}
+################################
+get_levels(x)
+gg_miss_var(x, show_pct = T)
+gg_miss_which(x)
+glimpse(x)
+
+y <- x %>% 
+  select(request,
+         date.received,
+         date.poured,
+         date.completed,
+         requested.by,
+         customer.name,
+         product.tested,
+         casting.type,
+         number.of.castings,
+         alloy,
+         alloy.lbs,
+         sand.type,
+         sand.lbs,
+         total.hours,
+         total.cost,
+         preprocessing.time,
+         postprocessing.time,
+         lead.time,
+         furnace.name,
+         cycle,
+         notes.ml) %>% 
+  mutate(requested.by=as.factor(requested.by)) %>% 
+  mutate(customer.name=as.factor(customer.name)) %>% 
+  mutate(product.tested=as.factor(product.tested)) %>% 
+  mutate(casting.type=as.factor(casting.type)) %>% 
+  mutate(alloy=as.factor(alloy)) %>% 
+  mutate(sand.type=as.factor(sand.type)) %>% 
+  mutate(furnace.name=as.factor(furnace.name)) 
+glimpse(y)
 ```
 

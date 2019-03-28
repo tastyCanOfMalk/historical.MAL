@@ -334,22 +334,24 @@ x$notes.ml[spec.rows]
 # REQUESTED BY
 
 # remove double spaces, commas, periods, caps
-# filter for unique sounds
 x.requestor <- x %>%
   mutate(requested.by = str_replace_all(requested.by, '\\  ', '')) %>% 
   mutate(requested.by = str_replace_all(requested.by, '\\,', '')) %>% 
   mutate(requested.by = str_replace_all(requested.by, '\\.', '')) %>% 
   mutate(requested.by = str_to_lower(requested.by)) %>% 
   select(request, requested.by) %>% 
-  mutate(sound = soundex(requested.by))
+  mutate(sound = soundex(requested.by,clean=F))
 
-# have some problem values at [1,], [125,]
-  unique(x.requestor$sound)
+# have some problem values at [1,], [125,]: NA and blank entries
+unique(x.requestor$sound)
   
-# problem rows: 1,540,3484
+# find problem rows: 1,540,3484
 x.requestor %>% 
   filter(sound == "" | is.na(sound))
-x[c(1:3,539:542,3483:3485),]
+
+# check surrounding rows
+x[c(1:3,539:542,3483:3485),c(1,5,22)]
+
 # replace NA/number values with next name in line
 x$requested.by[c(1,540,3484)] <- x$requested.by[c(2,541,3485)]
 
@@ -358,13 +360,14 @@ x <- x %>%
   mutate(requested.by = str_replace_all(requested.by, '\\,', '')) %>% 
   mutate(requested.by = str_replace_all(requested.by, '\\.', '')) %>% 
   mutate(requested.by = str_to_lower(requested.by)) %>% 
-  mutate(sound = soundex(requested.by))
+  mutate(sound = soundex(requested.by,clean=F))
 
 length(unique(x$requested.by)) # 204 unique names
-length(unique(x$sound))        # 134 unique sounds
+length(unique(x$sound))        # 132 unique sounds
 
 unique.names <- unique(x$sound)
-
+# some names are misspelled but have the same sound
+# replace any same-sounding with top used name
 # replace unique name with most popular unique name filtered by sound
 for (i in 1:length(unique.names)){
   # find most popular name of same sounding names
@@ -381,6 +384,7 @@ for (i in 1:length(unique.names)){
 
 # 129 unique names now
 length(unique(x$requested.by)) 
+
 # but we see mispellings such as adamotvits or lowek
 unique(x$requested.by)
 
@@ -482,6 +486,7 @@ x <- x %>%
 
 # seems to be good enough
 unique(x$requested.by)
+length(unique(x$requested.by)) # 106
 #########################
 # CUSTOMER NAMES
 
@@ -620,8 +625,9 @@ x <- full_join(x,xx)
 
 # way too many unique
 unique(x$casting.type)
-length(unique(x$casting.type)) # 273
+length(unique(x$casting.type)) # 274
 
+# remove double spaces, commas, periods
 x <- x %>%
   mutate(casting.type1 = str_replace_all(casting.type, '\\  ', ' ')) %>% 
   mutate(casting.type1 = str_replace_all(casting.type, '\\,', ' ')) %>%
@@ -630,8 +636,8 @@ x <- x %>%
   mutate(casting.type = casting.type1) %>% 
   select(-casting.type1)
 
-# unique(xx$casting.type)
-# length(unique(xx$casting.type)) # 264 
+unique(x$casting.type)
+length(unique(x$casting.type)) # 264
 
 # xxx <- xx %>% 
 #   filter(grepl('filter', casting.type))
@@ -661,10 +667,10 @@ x <- x %>%
   mutate(casting.type = casting.type1) %>% 
   select(-casting.type1)
 
-# unique(xx$casting.type)
-# length(unique(xx$casting.type)) # 119
-# 
-# xxx <- xx %>% 
+unique(x$casting.type)
+length(unique(x$casting.type)) # 120
+
+# xxx <- xx %>%
 #   filter(grepl('pig', casting.type1))
 # unique(xxx$casting.type1)
 
@@ -712,8 +718,8 @@ x <- x %>%
   mutate(sand.type = sand.type1) %>% 
   select(-sand.type1)
 
-# unique(xx$sand.type)
-# length(unique(xx$sand.type)) # 111
+# unique(x$sand.type)
+length(unique(x$sand.type)) # 111
 # 
 # xxx <- xx %>%
 #   filter(grepl('410', sand.type))
@@ -725,8 +731,8 @@ x <- x %>%
   mutate(sand.type = sand.type1) %>%
   select(-sand.type1)
 
-# unique(xx$sand.type)
-# length(unique(xx$sand.type))
+# unique(x$sand.type)
+length(unique(x$sand.type)) # 102
 
 ################################
 get_levels(x)
