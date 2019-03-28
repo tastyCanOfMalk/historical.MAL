@@ -16,6 +16,13 @@ knitr::opts_chunk$set(echo    = TRUE,
                       error   = FALSE,
                       message = FALSE,
                       warning = FALSE)
+if(!require(tidyverse)) install.packages("tidyverse")
+library(tidyverse)
+if(!require(naniar)) install.packages("naniar")
+library(naniar) # gg_miss
+
+rm(list=ls())
+setwd("D:/Code/R/historical.MAL")
 ```
 
 # Introduction
@@ -35,18 +42,8 @@ There might be other things to do but I have not spent much time looking at the 
 I just noticed that sand for this year should have all been W410, excel incremented the name by 1 each time. I think I might be adding information about individual tests from this year incrementally as it comes in and since it is only several rows, perhaps you can delete the entire set of rows from this year, if that makes things easier on your end.
 
 # Load & peak data
-## Load packages 
-```{r}
-if(!require(tidyverse)) install.packages("tidyverse")
-library(tidyverse)
-if(!require(naniar)) install.packages("naniar")
-library(naniar) # gg_miss
-```
-
 ## Import data
 ```{r}
-rm(list=ls())
-setwd("~/R/historical.MAL")
 x <- read_csv("data/History.csv")
 glimpse(x)
 ```
@@ -73,7 +70,7 @@ gg_miss_which(x)
 ```
 
 ## Outline of actions to take
-Rename variables to be all lowercase with no spaces. Seems the most important variables are casting type and allow type, as these are the only with zero missing values.
+Rename variables to be all lowercase with no spaces. Seems the most important variables are casting type and alloy type, as these are the only with zero missing values.
 
  * **Request**: should have 3,629 levels
  * **ID**: not utilized in recent pours, delete
@@ -82,16 +79,16 @@ Rename variables to be all lowercase with no spaces. Seems the most important va
  * **Date poured**: convert to date format, fill missing values
  * **Date completed**: convert to date format, fill missing values, perhaps create new column calculating days to complete from date received/completed
  
- * **Notes ML**: n/a
+ * **Notes ML**: NA
  * **Special projects**: most values are missing, unsure of importance of this field, should likely merge with comments or remove entirely  
  
  * **Requested by**: fill missing values, will require some renaming/matching
  * **Customer name**: fill missing values, will require some renaming/matching
  * **Product tested**: fill missing values, will require some renaming/matching
  
- * **Alloy**: n/a
- * **Casting type**: n/a
- * **Number of castings**: some n/a values, fill in with rounded averages 
+ * **Alloy**: NA
+ * **Casting type**: NA
+ * **Number of castings**: some NA values, fill in with rounded averages 
  * **lbs**: lbs of metal used, could be calculated based on values,  fill missing values
  
  * **Sand type**: fill missing values, will require some renaming/matching
@@ -99,7 +96,7 @@ Rename variables to be all lowercase with no spaces. Seems the most important va
  
  * **Furnace cycle**: need to come up with new way to ID new lining and cycles
 
- * **Total hours**: many n/a values, should be calculated automatically based on number of castings, casting type, etc
+ * **Total hours**: many NA values, should be calculated automatically based on number of castings, casting type, etc
  * **Total cost**: fill missing values, perhaps determine how it is calculated to automate the calculation
  
 We have many missing datapoints, fields that aren't inuitive, some useless fields, fields that need added, etc. We'll start with the most simple and move on.  
@@ -117,7 +114,7 @@ colnames(x)
 ```
 
 ## $request
-There is a duplicate entry somewhere.
+There is a duplicate entry somewhere based on number of unique levels versus number of rows.
 ```{r}
 which(duplicated(x$request)==TRUE)
 as.data.frame(t(x[3609:3611,]))
@@ -154,9 +151,11 @@ With these dates we can now determine a few useful values:
   * Postprocessing time: date complete - date poured
   * Lead time: date complete - date received  
   
-Of course, we need to fix the erroneous entries that are pushing our Max. date all the way up to the year 2513.
+Of course, we need to fix the erroneous entries that are pushing our `Max` values all the way up to the year 2513.
 
 ### Fix far future dates
+We manually fix the handful of dates with typos.  
+
 ```{r}
 wrong.dates <- x %>% 
   filter(date.received  > "2020-01-01" |
@@ -174,14 +173,17 @@ x$date.received[3106]  <- as.Date("2012-03-20")
 x$date.received[3149]  <- as.Date("2012-06-19")
 x$date.received[3341]  <- as.Date("2013-11-01")
 x$date.completed[3582] <- as.Date("2016-04-05")
-# x[3605:3608,]
-x$date.poured[3606] <- as.Date("2017-08-24")
+x$date.poured[3606]    <- as.Date("2017-08-24")
 
 # dates now seem to be in a normal range
 summary(x[c(3,2,4)])
 ```
 
 ### Calculate lead times
+Now that are values are all within somewhat normal ranges, detecting further errors will require calculating the differences in dates. For example if `date.received` has a later date than `date.completed` we will see a negative value in our new `lead.time` variable.  
+
+Using the function on our current data shows negative values in all new variables as well as some unrealistically large `Max` values.
+
 ```{r}
 ## create function so that results of editing can be seen quickly
 calc_lead <- function(){
@@ -198,9 +200,9 @@ calc_lead <- function(){
 summary(calc_lead()[c(19:21)])
 ```
 
-Again, our Max. values are way off, this time our Min. values are equally bad.
-
 ### Fix large processing values
+We filter for values larger than 400 and find quite a few entries have simple typos. We correct the handful of errors by hand.  
+
 ```{r}
 ## fix large values
 wrong.dates <- calc_lead() %>% 
@@ -224,7 +226,9 @@ summary(calc_lead()[c(19:21)])
 ```
 
 ### Fix negative processing values
-This occurs when dates are not in proper chronology: date.received < date.poured < date.completed. We can fix this by filtering for dates that do not meet this criteria and adjusting them based on available dates and median values for preprocessing/postprocessing/lead times. 
+This occurs when dates are not in proper chronology: date.received < date.poured < date.completed. We can fix this by filtering for dates that do not meet this criteria and adjusting them based on available dates and median values for preprocessing/postprocessing/lead times.  
+
+In this case we have 244 rows of incorrectly ordered data, definitely not going to do this manually. This time we'll impute the missing data by taking the median values of the correct data. First part of the code fixes NA values.  
 
 ```{r}
 # fix negatives
@@ -232,29 +236,29 @@ This occurs when dates are not in proper chronology: date.received < date.poured
 wrong.dates2 <- calc_lead() %>% 
   filter(preprocessing.time < 0 | postprocessing.time < 0)
 wrong.dates2[c(1,3,2,4)]
-# 234+ rows, definitely not doing this manually
 
-# remove all rows listed, 
-# calculate average lead times on remaining dataset,
-# insert dates into removed dataset, merge 
+# antijoin the incorrect data
 x.anti <- anti_join(calc_lead(), wrong.dates2, c("request"))
 
-# have NA values in date.completed
-summary(wrong.dates2[c(3,2,4)])
-# if NA change completed date to received + 9
-
-# > summary(x.anti[c(19:21)])
+# record median values for imputation
+summary(x.anti[c(19:21)])
 # preprocessing.time postprocessing.time   lead.time     
 # Median :  6.000    Median :  3.000     Median :  9.00  
 
+# have NA values in date.completed
+summary(wrong.dates2[c(3,2,4)])
+
+# if NA change completed date to received + 9
 for (i in 1:dim(wrong.dates2)[1]){
   if (is.na(wrong.dates2$date.completed[[i]]) == TRUE){
     wrong.dates2$date.completed[[i]] <- wrong.dates2$date.received[[i]] + 9
   }
 }
+
 # no more NA's
 summary(wrong.dates2[c(3,2,4)])
 
+#
 # now we fix errors in chronology causing negative time calculations
 summary(wrong.dates2[c(19:21)])
 
@@ -282,14 +286,14 @@ for (i in 1:dim(wrong.dates2)[1]){
 # wrong.dates2$date.received <= wrong.dates2$date.poured
 # wrong.dates2$date.poured <= wrong.dates2$date.completed
 
-# change date values on original dataframe and recalculate
-# loop produces an error when counter > nrows, still fine though
+# now that `wrong.dates2` has corrected values, merge with original df
 counter=1
 for (i in 1:nrow(x)){
-    if (x$request[[i]] == wrong.dates2$request[[counter]]){
-      x[i,c(2,3,4)] <- wrong.dates2[counter,c(2,3,4)]
-      counter=counter+1
-    }
+  if (counter == nrow(wrong.dates)+1){break}
+  if (x$request[[i]] == wrong.dates$request[[counter]]){
+    x[i,c(2,3,4)] <- wrong.dates[counter,c(2,3,4)]
+    counter=counter+1
+  }
 }
 
 # date summary looks okay now... except for NA's
@@ -297,8 +301,12 @@ summary(calc_lead()[c(19:21)])
 ```
 
 ### Fix NA values in dates
-Our calculations have NA values which means our dates must have NA's. We'll check which date columns contain NA's and in a similar fashion to above will extrapolate appropriate times based on the calculated median values above.  
+Our calculations have NA values which means our dates must have NA's. We'll check which date columns contain NA's and in a similar fashion to above will impute appropriate dates based on the calculated median values above.  
+
+Based on the `summary` output it looks like `date.poured` has only a single `NA` value. If we fill this date in by hand we can just calculate the other variables based on the `date.poured` value and our previously calculated median values of processing times.  
+
 ```{r}
+# check NAs
 summary(x)[,c(3,2,4)]
 
 # fill NA values using date.poured to calculate received and completed
@@ -312,10 +320,12 @@ x$date.poured[3610] <- x$date.poured[3609] - 72
 # now date.poured has no NA's and we can extrapolate from this
 summary(x)[,c(3,2,4)]
 
+# convert all NA date.received to date.poured-6
 x.rec <- x %>% 
   filter(is.na(date.received)) %>% 
   mutate(date.received = date.poured - 6)
 
+# merge back into original df
 counter=1
 for (i in 1:nrow(x)){
   if (x$request[[i]] == x.rec$request[[counter]]){
@@ -324,10 +334,12 @@ for (i in 1:nrow(x)){
   }
 }
 
+# convert all NA date.completed to date.poured+6
 x.com <- x %>% 
   filter(is.na(date.completed)) %>% 
   mutate(date.completed = date.poured + 3)
 
+# merge back into original df
 counter=1
 for (i in 1:nrow(x)){
   if (x$request[[i]] == x.com$request[[counter]]){
@@ -348,13 +360,17 @@ Seems to be a redundant column when the $notes column would suffice. Check if va
 ```{r}
 # list non-NA values in special projects
 x$special.projects[!is.na(x$special.projects)]
+
 # find rownums of non-NA vlaues
 spec.rows <- which(!is.na(x$special.projects)==T)
+
 # check notes.ml of same rownums
 x$notes.ml[spec.rows]
+
 # concatenate the columns
 x[spec.rows,] <- x[spec.rows,] %>%
   mutate(notes.ml = paste(notes.ml, special.projects, sep="--"))
+
 # confirm
 x$notes.ml[spec.rows]
 ```

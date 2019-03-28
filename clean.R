@@ -157,17 +157,20 @@ wrong.dates[c(1,3,2,4)]
 # insert dates into removed dataset, merge 
 x.anti <- anti_join(calc_lead(), wrong.dates, c("request"))
 # dim(calc_lead())[[1]] - dim(x.anti)[[1]] == dim(wrong.dates)[[1]]
+
 # anti looks good
 summary(x.anti[c(19:21)])
+
 # wrongs look bad
 summary(wrong.dates[c(19:21)])
+
 # see some NA values from the calculations
 # backtrace to check dates
 summary(wrong.dates[c(3,2,4)])
+
 # have NA values in date.completed
 # if NA change completed date to received + 9
-
-# > summary(x.anti[c(19:21)])
+summary(x.anti[c(19:21)])
 # preprocessing.time postprocessing.time   lead.time     
 # Median :  6.000    Median :  3.000     Median :  9.00  
 
@@ -176,6 +179,7 @@ for (i in 1:dim(wrong.dates)[1]){
     wrong.dates$date.completed[[i]] <- wrong.dates$date.received[[i]] + 9
   }
 }
+
 # no more NA's
 summary(wrong.dates[c(3,2,4)])
 
@@ -262,10 +266,12 @@ x$date.poured[3610] <- x$date.poured[3609] - 72
 # now date.poured has no NA's
 summary(x)[,c(3,2,4)]
 
+# convert all NA date.received to date.poured-6
 x.rec <- x %>% 
   filter(is.na(date.received)) %>% 
   mutate(date.received = date.poured - 6)
 
+# merge back into original df
 counter=1
 for (i in 1:nrow(x)){
   if (x$request[[i]] == x.rec$request[[counter]]){
@@ -274,10 +280,12 @@ for (i in 1:nrow(x)){
   }
 }
 
+# convert all NA date.completed to date.poured+6
 x.com <- x %>% 
   filter(is.na(date.completed)) %>% 
   mutate(date.completed = date.poured + 3)
 
+# merge back into original df
 counter=1
 for (i in 1:nrow(x)){
   if (x$request[[i]] == x.com$request[[counter]]){
@@ -300,16 +308,21 @@ which(is.na(x$notes.ml)==T)
 
 ##########################
 # SPECIAL.PROJECTS
+
 # list non-NA values in special projects
 x$special.projects[!is.na(x$special.projects)]
+
 # find rownums of non-NA vlaues
 which(!is.na(x$special.projects)==T)
 spec.rows <- which(!is.na(x$special.projects)==T)
+
 # check notes.ml of same rownums
 x$notes.ml[spec.rows]
+
 # concatenate the columns
 x[spec.rows,] <- x[spec.rows,] %>%
   mutate(notes.ml = paste(notes.ml, special.projects, sep="--"))
+
 # confirm
 x$notes.ml[spec.rows]
 
