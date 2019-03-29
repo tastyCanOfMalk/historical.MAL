@@ -16,10 +16,23 @@ knitr::opts_chunk$set(echo    = TRUE,
                       error   = FALSE,
                       message = FALSE,
                       warning = FALSE)
+
 if(!require(tidyverse)) install.packages("tidyverse")
 library(tidyverse)
+if(!require(gridExtra)) install.packages("gridExtra")
+library(gridExtra)
 if(!require(naniar)) install.packages("naniar")
 library(naniar) # gg_miss
+if(!require(stringdist)) install.packages("stringdist")
+library(stringdist) # soundex?
+if(!require(phonics)) install.packages("phonics")
+library(phonics) # soundex?
+if(!require(lexicon)) install.packages("lexicon")
+library(lexicon) # common_names
+if(!require(xlsx)) install.packages("xlsx")
+library(xlsx)
+if (!require(viridis)) install.packages("viridis")
+library(viridis)
 
 rm(list=ls())
 setwd("D:/Code/R/historical.MAL")
@@ -685,7 +698,7 @@ length(unique(x$sand.type)) # 102
 ```
 
 ## Finalize, reorder variables
-We've done enough for some analysis, will reorder some variables for more clear presentation and change some column classes.  
+We've done enough cleaning for some analysis, will reorder some variables for more clear presentation and change some column classes. The final dataframe will be renamed `y` instead of `x` and exported to a new file.. 
 
 ```{r}
 ################################
@@ -724,5 +737,12 @@ y <- x %>%
   mutate(sand.type=as.factor(sand.type)) %>% 
   mutate(furnace.name=as.factor(furnace.name)) 
 glimpse(y)
+
+write.xlsx(y, file="/data/cleanedMAL.xlsx", sheetName="Sheet1", 
+           col.names=TRUE, row.names=TRUE, append=FALSE)
 ```
 
+# Analysis
+Now we need to figure out what to do with the data. First we can try some simple EDA with what variables we have, then get into analysis more focused on furnace life.  
+
+## EDA

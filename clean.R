@@ -10,6 +10,8 @@ if(!require(phonics)) install.packages("phonics")
 library(phonics) # soundex?
 if(!require(lexicon)) install.packages("lexicon")
 library(lexicon) # common_names
+if(!require(xlsx)) install.packages("xlsx")
+library(xlsx)
 
 # clear environment
 rm(list=ls())
@@ -771,3 +773,6 @@ y <- x %>%
   mutate(furnace.name=as.factor(furnace.name)) 
 glimpse(y)
 
+write.xlsx(y, file="/data/cleanedMAL.xlsx", sheetName="Sheet1", 
+           col.names=TRUE, row.names=TRUE, append=FALSE)
+  
