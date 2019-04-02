@@ -3,12 +3,25 @@ title: "Historical MAL dataset cleanup"
 author: "Edward Yu"
 date: "December 07, 2018"
 output:
-  pdf_document:
+  # pdf_document:
+  #     toc: true
+  #     toc_depth: 2
+  #     df_print: kable
+  #     citation_package: natbib
+  html_document:
+      theme: flatly
+      highlight: tango
       toc: true
-      toc_depth: 2
-      df_print: kable
-      citation_package: natbib
-bibliography: bib.bib
+      toc_float:
+        collapsed: true
+      toc_depth: 3
+      df_print: paged
+      code_folding: show
+      # fig_width: 7
+      # fig_height: 6
+      # fig_caption: true
+      # citation_package: natbib
+# bibliography: bib.bib
 ---
 
 ```{r setup, include=FALSE}
@@ -40,7 +53,8 @@ setwd("D:/Code/R/historical.MAL")
 
 # Introduction
 ## *From Marek*: 
-### If you are interested I have a small project for R, which is very useful. It has to do with history records of MAL. Here is some basic info:
+### If you are interested...
+I have a small project for R, which is very useful. It has to do with history records of MAL. Here is some basic info:
   
   * Goal: Clean up and consolidate dataset to enable easy searching of past melt
 records
@@ -404,7 +418,7 @@ x <- x %>%
 unique(x$sound)
 
 # find problem rows: 1,540,3484
-x.requestor %>% 
+x %>% 
   filter(sound == "" | is.na(sound))
 
 # check surrounding rows
@@ -702,11 +716,6 @@ We've done enough cleaning for some analysis, will reorder some variables for mo
 
 ```{r}
 ################################
-get_levels(x)
-gg_miss_var(x, show_pct = T)
-gg_miss_which(x)
-glimpse(x)
-
 y <- x %>% 
   select(request,
          date.received,
@@ -736,9 +745,12 @@ y <- x %>%
   mutate(alloy=as.factor(alloy)) %>% 
   mutate(sand.type=as.factor(sand.type)) %>% 
   mutate(furnace.name=as.factor(furnace.name)) 
+
+gg_miss_var(y, show_pct = T)
 glimpse(y)
 
-write.xlsx(y, file="/data/cleanedMAL.xlsx", sheetName="Sheet1", 
+# export to xls
+write.xlsx(y, file=paste0(getwd(),"/data/cleanedMAL.xlsx"), sheetName="Sheet1", 
            col.names=TRUE, row.names=TRUE, append=FALSE)
 ```
 
@@ -746,3 +758,89 @@ write.xlsx(y, file="/data/cleanedMAL.xlsx", sheetName="Sheet1",
 Now we need to figure out what to do with the data. First we can try some simple EDA with what variables we have, then get into analysis more focused on furnace life.  
 
 ## EDA
+A couple basic plots show our busiest months occur between August and May, and that pour frequency has reduced dramatically since 1999, or even 2015 for that matter.   
+
+
+```{r}
+# Histogram of pours per month
+g1 <- y %>% 
+  mutate(month=as.factor(substring(months.Date(x$date.poured),1,3))) %>% 
+  ggplot(aes(x=month,fill=..count..))+
+  geom_histogram(stat="count")+
+  scale_x_discrete(limits=c("Jan","Feb","Mar","Apr","May","Jun",
+                            "Jul","Aug","Sep","Oct","Nov","Dec"))+
+  ggtitle("Cumulative pours over all months")+
+  scale_fill_viridis()+
+  theme(legend.position = "none")+
+  coord_flip()
+
+# Histogram of pours per year
+g2 <- y %>% 
+  mutate(year=as.factor(substring(x$date.poured,1,4))) %>% 
+  filter(!is.na(year)) %>% 
+  ggplot(aes(x=year,fill=..count..))+
+  geom_histogram(stat="count")+
+  ggtitle("Pours per year")+
+  scale_fill_viridis()+
+  theme(legend.position = "none")+
+  theme(axis.text.x = element_text(angle=45,hjust=1))
+
+grid.arrange(g1,g2,ncol=2)
+```
+
+Faceting number of pours over the years gives a little more insight as to when pours were occuring.  
+
+```{r}
+# Pours per month faceted by year
+y %>% 
+  mutate(month=as.factor(substring(months.Date(x$date.poured),1,3))) %>% 
+  mutate(year=as.factor(substring(x$date.poured,1,4))) %>% 
+  filter(!is.na(year)) %>% 
+  ggplot(aes(x=month,fill=..count..))+
+  geom_histogram(stat="count")+
+  scale_x_discrete(limits=c("Jan","Feb","Mar","Apr","May","Jun",
+                            "Jul","Aug","Sep","Oct","Nov","Dec"))+
+  ggtitle("Pours per month per year")+
+  scale_fill_viridis()+
+  theme(legend.position = "none")+
+  theme(axis.text.x = element_text(angle=90,hjust=1,vjust=0.5,size=7))+
+  facet_wrap(year~.)
+```
+
+## Furnace life
+Why are some furnaces lasting longer than others? Dramatically so in some cases? Plotting the longest lasting furnaces (`n > 50`) shows the longest lasting furnace is `toby`, which lasted 178 days. These extremely high values seem like outliers based on experience and when we plot the values using a boxplot, our plot confirms they are outliers.  
+
+```{r}
+# barplot of longest lasting furnaces
+p1 <- y %>% 
+  filter(!is.na(furnace.name)) %>% 
+  mutate(furnace.name=as.factor(furnace.name)) %>% 
+  count(furnace.name) %>% 
+  # arrange(desc(n)) %>% 
+  filter(n>50) %>% 
+  ggplot(aes(x=reorder(furnace.name,n),y=n,fill=n))+
+  geom_bar(stat="identity")+
+  coord_flip()+
+  scale_fill_viridis()+
+  theme(legend.position = "none")+
+  ggtitle("Longest lasting furnaces, n>50")
+
+# boxplot of furnace life
+p2 <- y %>% 
+  filter(!is.na(furnace.name)) %>% 
+  mutate(furnace.name=as.factor(furnace.name)) %>% 
+  count(furnace.name) %>% 
+  select(-furnace.name) %>% 
+  mutate(furnace = as.factor("furnace")) %>% 
+  ggplot(aes(y=n,x=furnace))+
+  geom_boxplot(outlier.shape = NA,
+               position=position_dodge(width=.9))+
+  geom_jitter(aes(color=n),width=.1)+
+  coord_flip()+
+  theme(legend.position = "none")+
+  ggtitle("Distribution of furnace.life values")
+
+grid.arrange(p1,p2,nrow=1)
+```
+
+
