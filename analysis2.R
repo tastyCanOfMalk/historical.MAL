@@ -38,5 +38,6 @@ y2.melt <- y2 %>%
 y2.melt %>% 
   ggplot(aes(x=reorder(furnace.name,value),y=value,fill=variable)) + 
   geom_bar(stat="identity")+ 
-  scale_fill_viridis(discrete=TRUE,option=2) +
+  scale_fill_brewer(palette="Set3")+
   coord_flip()
+  theme(axis.text.x = element_text(angle=45,hjust=1,vjust=0.5,size=8))
