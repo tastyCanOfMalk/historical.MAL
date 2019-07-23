@@ -1,0 +1,27 @@
+---
+title: "Lbs poured per year"
+author: "Edward Yu"
+date: "July 23, 2019"
+output:
+  # pdf_document:
+  #     toc: true
+  #     toc_depth: 2
+  #     df_print: kable
+  #     citation_package: natbib
+  html_document:
+      theme: flatly
+      highlight: tango
+      toc: true
+      toc_float:
+        collapsed: true
+      toc_depth: 3
+      df_print: paged
+      code_folding: show
+      # fig_width: 7
+      # fig_height: 6
+      # fig_caption: true
+      # citation_package: natbib
+# bibliography: bib.bib
+---
+
+

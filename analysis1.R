@@ -118,7 +118,6 @@ find_Furnace(2004,"Jun")
 
 find_Furnace(2006,"Jul")
 
-
 # table of longest lasting furnaces
 df.furnace <- y %>% 
   filter(!is.na(furnace.name)) %>% 

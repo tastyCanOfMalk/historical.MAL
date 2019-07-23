@@ -10,7 +10,6 @@ glimpse(y2)
 
 y22 <- y2 %>% 
   select(c(-medianYear,-life,-furnace.name,-castings,-count)) %>% 
-  as.matrix()
 
 # create model
 fit <- rpart(count~.,y22)
