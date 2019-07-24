@@ -752,6 +752,9 @@ glimpse(y)
 # export to xls
 write.xlsx(y, file=paste0(getwd(),"/data/cleanedMAL.xlsx"), sheetName="Sheet1", 
            col.names=TRUE, row.names=TRUE, append=FALSE)
+
+# export to csv
+write.csv(y, file="data/cleanedMAL.csv")
 ```
 
 # Analysis
