@@ -773,6 +773,6 @@ y <- x %>%
   mutate(furnace.name=as.factor(furnace.name)) 
 glimpse(y)
 
-write.xlsx(y, file="/data/cleanedMAL.xlsx", sheetName="Sheet1", 
+write.xlsx(y, file="data/cleanedMAL.xlsx", sheetName="Sheet1", 
            col.names=TRUE, row.names=TRUE, append=FALSE)
-  
+write.csv(y, file="data/cleanedMAL.csv")
