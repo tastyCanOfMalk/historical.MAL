@@ -12,16 +12,40 @@ yy <- y %>%
   select(year, alloy, alloy.lbs) %>% 
   drop_na()
   
-  
+# lbs per year  
 yy %>% 
   group_by(year) %>% 
-  summarise(total.lbs = sum(alloy.lbs)) 
+  summarise(total.lbs = sum(alloy.lbs))
 
 yy %>% 
-  ggplot(aes(x=year, year=alloy.lbs))+
-  geom_bar()
+  ggplot(aes(x=year, y=alloy.lbs))+
+  geom_bar(stat="identity") + 
+  ggtitle("Lbs poured vs year") + 
+  xlab("Year") + 
+  ylab ("Lbs poured")
+  
+# lbs per year by alloy
+yy %>% 
+  group_by(year, alloy) %>% 
+  summarise(total.lbs = sum(alloy.lbs))
 
-# aggregate(yy$alloy.lbs,list(yy$year),sum)
+yy %>% 
+  ggplot(aes(x=year, y=alloy.lbs, fill=alloy))+
+  geom_bar(stat="identity") + 
+  ggtitle("Lbs poured vs year by alloy") + 
+  xlab("Year") + 
+  ylab ("Lbs poured")
 
-# yy %>% 
-#   count(year)
+yy %>% 
+  filter(alloy != "stainless") %>% 
+  filter(alloy != "simo") %>% 
+  filter(alloy != "brass") %>% 
+  filter(alloy != "white iron") %>% 
+  filter(alloy != "copper") %>% 
+  ggplot(aes(x=year, y=alloy.lbs))+
+  geom_bar(stat="identity") + 
+  facet_wrap(~alloy)+
+  ggtitle("Lbs poured vs year by alloy") + 
+  xlab("Year") + 
+  ylab ("Lbs poured") +
+  theme(axis.text.x = element_text(angle=-70,vjust=0.5,hjust=0))
